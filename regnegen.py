@@ -11,6 +11,7 @@ lav_opgave(fag=None) -> dict med:
 """
 from __future__ import annotations
 
+import math
 import random
 
 from core import oekonomi as oek
@@ -315,6 +316,175 @@ def g_utilization():
 
 
 # ---------------------------------------------------------------------------
+# FLERE: økonomi, statistik, indkøb, produktion
+# ---------------------------------------------------------------------------
+
+def g_payback():
+    inv = random.choice([200, 300, 400, 500]) * 1000
+    a = random.choice([80, 100, 120, 150]) * 1000
+    cfs = [-inv] + [a] * 8
+    svar = oek.payback(cfs)
+    return {
+        "fag": "Økonomi", "emne": "Payback (tilbagebetalingstid)",
+        "sp": f"En investering på {_kr(inv)} kr. giver {_kr(a)} kr. om året. Beregn "
+              f"tilbagebetalingstiden (payback) i år (2 decimaler).",
+        "svar": svar, "enhed": "år", "dec": 2, "tol": max(abs(svar) * 0.02, 0.05),
+        "metode": f"Payback = investering/årligt cashflow = {_kr(inv)}/{_kr(a)} = "
+                  f"{_pct(svar, 2)} år (akkumuleret cashflow når 0).",
+    }
+
+
+def g_overskudsgrad():
+    oms = random.choice([5, 8, 10, 12, 20]) * 1_000_000
+    ebit = random.choice([300, 500, 800, 1200, 2000]) * 1000
+    svar = ebit / oms * 100
+    return {
+        "fag": "Økonomi", "emne": "Overskudsgrad",
+        "sp": f"Driftsresultatet (EBIT) er {_kr(ebit)} kr. og omsætningen {_kr(oms)} kr. Beregn "
+              f"overskudsgraden i % (1 decimal).",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": 0.2,
+        "metode": f"Overskudsgrad = EBIT/omsætning = {_kr(ebit)}/{_kr(oms)} = {_pct(svar)}%.",
+    }
+
+
+def g_likviditetsgrad():
+    oa = random.choice([2, 3, 4, 5, 6]) * 1_000_000
+    kg = random.choice([2, 3, 4]) * 1_000_000
+    svar = oa / kg * 100
+    return {
+        "fag": "Økonomi", "emne": "Likviditetsgrad",
+        "sp": f"Omsætningsaktiverne er {_kr(oa)} kr. og den kortfristede gæld {_kr(kg)} kr. Beregn "
+              f"likviditetsgraden i % (1 decimal).",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": 0.3,
+        "metode": f"Likviditetsgrad = omsætningsaktiver/kortfristet gæld = {_kr(oa)}/{_kr(kg)} = "
+                  f"{_pct(svar)}%.",
+    }
+
+
+def g_gearing():
+    gaeld = random.choice([2, 3, 4, 6, 8]) * 1_000_000
+    ek = random.choice([2, 3, 4, 5]) * 1_000_000
+    svar = gaeld / ek
+    return {
+        "fag": "Økonomi", "emne": "Gearing",
+        "sp": f"Den samlede gæld er {_kr(gaeld)} kr. og egenkapitalen {_kr(ek)} kr. Beregn "
+              f"gearingen (gæld/egenkapital, 2 decimaler).",
+        "svar": svar, "enhed": "", "dec": 2, "tol": max(abs(svar) * 0.02, 0.03),
+        "metode": f"Gearing = gæld/egenkapital = {_kr(gaeld)}/{_kr(ek)} = {_pct(svar, 2)}.",
+    }
+
+
+def g_bidrag_salgspris():
+    kost = random.choice([100, 150, 200, 300, 400])
+    dg = random.choice([0.30, 0.40, 0.50, 0.60])
+    res = oek.bidragskalkulation(kost, dg)
+    svar = res["salgspris"]
+    return {
+        "fag": "Økonomi", "emne": "Bidragskalkulation (salgspris)",
+        "sp": f"Kostprisen er {kost} kr. og den ønskede dækningsgrad er {_pct(dg*100,0)}%. Beregn "
+              f"salgsprisen (afrund til hele kr.).",
+        "svar": svar, "enhed": "kr.", "dec": 0, "tol": max(abs(svar) * 0.01, 1),
+        "metode": f"DB = kostpris·DG/(1−DG) = {kost}·{dg}/{round(1-dg,2)} = {_tal(res['db'],0)} kr. "
+                  f"Salgspris = kostpris + DB = {kost} + {_tal(res['db'],0)} = {_tal(svar,0)} kr.",
+    }
+
+
+def g_ci_andel():
+    n = random.choice([100, 200, 400, 500])
+    x = random.randint(int(n * 0.2), int(n * 0.6))
+    phat = x / n
+    res = stat.ci_proportion(phat, n, 0.95)
+    svar = res["margin"] * 100
+    return {
+        "fag": "Statistik", "emne": "Konfidensinterval (andel)",
+        "sp": f"Af {n} adspurgte svarede {x} ja (andel p̂ = {_pct(phat*100,1)}%). Beregn 95%-"
+              f"konfidensintervallets margin i procentpoint (z = 1,96, 2 decimaler).",
+        "svar": svar, "enhed": "pp", "dec": 2, "tol": max(abs(svar) * 0.04, 0.05),
+        "metode": f"Margin = z·√(p̂(1−p̂)/n) = 1,96·√({round(phat,3)}·{round(1-phat,3)}/{n}) = "
+                  f"{_pct(svar,2)} procentpoint. Interval: {_pct(res['nedre']*100,1)}% til "
+                  f"{_pct(res['oevre']*100,1)}%.",
+    }
+
+
+def g_p_ucl():
+    pbar = random.choice([0.02, 0.03, 0.05, 0.08, 0.10])
+    n = random.choice([100, 150, 200, 300])
+    svar = (pbar + 3 * math.sqrt(pbar * (1 - pbar) / n)) * 100
+    return {
+        "fag": "Statistik", "emne": "Kontrolkort (p-kort UCL)",
+        "sp": f"Den gennemsnitlige fejlandel er p̄ = {_pct(pbar*100,0)}%, og stikprøvestørrelsen er "
+              f"n = {n}. Beregn den øvre kontrolgrænse (UCL) for p-kortet i % (1 decimal).",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": max(abs(svar) * 0.02, 0.1),
+        "metode": f"UCL = p̄ + 3·√(p̄(1−p̄)/n) = {pbar} + 3·√({pbar}·{round(1-pbar,2)}/{n}) = "
+                  f"{_pct(svar)}%.",
+    }
+
+
+def g_poq():
+    D = random.choice([5000, 8000, 10000, 12000, 20000])
+    S = random.choice([100, 150, 200, 300])
+    pris = random.choice([20, 40, 50, 80])
+    rente = random.choice([0.10, 0.15, 0.20, 0.25])
+    H = pris * rente
+    d = random.choice([20, 30, 40, 50])
+    p = d + random.choice([20, 40, 60, 80])
+    svar = ind.epq(D, S, H, d, p)
+    return {
+        "fag": "Indkøb", "emne": "POQ / EPQ (produktionsserie)",
+        "sp": f"Årligt forbrug D = {_kr(D)}, igangsætningsomkostning S = {S} kr., enhedspris {pris} "
+              f"kr., lagerrente {_pct(rente*100,0)}%. Daglig efterspørgsel d = {d}, daglig "
+              f"produktion p = {p}. Beregn POQ (afrund til hele stk.).",
+        "svar": svar, "enhed": "stk.", "dec": 0, "tol": max(abs(svar) * 0.02, 1),
+        "metode": f"H = {pris}·{rente} = {_tal(H,1)}. Korrektion (1−d/p) = (1−{d}/{p}) = "
+                  f"{round(1-d/p,3)}. POQ = √(2·D·S/(H·(1−d/p))) = {_tal(svar,0)} stk.",
+    }
+
+
+def g_littles_wip():
+    R = random.choice([5, 10, 20, 25, 50, 100])
+    T = random.choice([2, 3, 4, 5, 8])
+    svar = prod.littles_law(throughput=R, flow_time=T)["WIP"]
+    return {
+        "fag": "Produktion", "emne": "Little's Law (WIP)",
+        "sp": f"Gennemløbshastigheden er {R} enheder/time, og gennemløbstiden er {T} timer. Beregn "
+              f"WIP (antal enheder i arbejde).",
+        "svar": svar, "enhed": "enheder", "dec": 0, "tol": 1,
+        "metode": f"Little's Law: WIP = R·T = {R}·{T} = {_tal(svar,0)} enheder.",
+    }
+
+
+def g_line_balance():
+    times = [random.choice([20, 25, 30, 35, 40, 45]) for _ in range(random.choice([4, 5, 6]))]
+    res = prod.line_balance(times)
+    svar = res["effektivitet"] * 100
+    return {
+        "fag": "Produktion", "emne": "Linjebalancering (effektivitet)",
+        "sp": f"En samlebånds-linje har stationstider {times} sek. Beregn linjens effektivitet i % "
+              f"(Σtid / (antal stationer · cyklustid), 1 decimal).",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": 0.5,
+        "metode": f"Cyklustid = max = {max(times)} sek. Σtid = {sum(times)} sek. "
+                  f"Effektivitet = {sum(times)}/({len(times)}·{max(times)}) = {_pct(svar)}%.",
+    }
+
+
+def g_min_stations():
+    timer = random.choice([7.0, 7.5, 8.0])
+    out = random.choice([400, 500, 600, 700, 800])
+    tasks = [random.choice([20, 25, 30, 35, 40]) for _ in range(random.choice([5, 6, 7]))]
+    available = timer * 3600
+    takt = prod.takt_time(available, out)
+    svar = prod.theoretical_min_stations(tasks, takt)
+    return {
+        "fag": "Produktion", "emne": "Min. antal stationer",
+        "sp": f"Der er {int(available)} sek. til rådighed og skal laves {out} stk. Opgavetiderne er "
+              f"{tasks} sek. Beregn det teoretiske min. antal stationer.",
+        "svar": float(svar), "enhed": "stationer", "dec": 0, "tol": 0.5,
+        "metode": f"Takt time = {int(available)}/{out} = {_tal(takt,1)} sek. Σopgavetid = "
+                  f"{sum(tasks)} sek. Min. stationer = loft({sum(tasks)}/{_tal(takt,1)}) = {svar}.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -327,6 +497,12 @@ _GEN = [
     (g_eoq, "Indkøb"), (g_safety_stock, "Indkøb"), (g_rop, "Indkøb"),
     (g_oee, "Produktion"), (g_littles_T, "Produktion"), (g_takt, "Produktion"),
     (g_utilization, "Produktion"),
+    # Tilføjet senere
+    (g_payback, "Økonomi"), (g_overskudsgrad, "Økonomi"), (g_likviditetsgrad, "Økonomi"),
+    (g_gearing, "Økonomi"), (g_bidrag_salgspris, "Økonomi"),
+    (g_ci_andel, "Statistik"), (g_p_ucl, "Statistik"),
+    (g_poq, "Indkøb"),
+    (g_littles_wip, "Produktion"), (g_line_balance, "Produktion"), (g_min_stations, "Produktion"),
 ]
 
 FAG_LISTE = ["Økonomi", "Statistik", "Indkøb", "Produktion"]

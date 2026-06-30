@@ -20,6 +20,8 @@ from ui_theme import inject_css  # noqa: E402
 from regn_data import REGN  # noqa: E402
 from pakke_spoergsmaal import KONCEPT  # noqa: E402
 from pakke_kaeder import EKSTRA_KAEDER  # noqa: E402
+from pakke_argumenter import EKSTRA_ARGUMENTER  # noqa: E402
+from pakke_fakta import EKSTRA_FAKTA  # noqa: E402
 import regnegen  # noqa: E402
 
 st.set_page_config(page_title="Forsvarstræner", page_icon="🎓", layout="wide")
@@ -344,6 +346,8 @@ ARGUMENTER = [
                   "gerne underbygget med tal (TCO).",
     },
 ]
+# Mange flere fler-forsvarlige cases oven på de oprindelige (ingen fjernes).
+ARGUMENTER = ARGUMENTER + EKSTRA_ARGUMENTER
 
 # Faktatjek: det der ER fakta og skal sidde fast — fundamentet du argumenterer ovenpå.
 FAKTA = [
@@ -377,6 +381,8 @@ FAKTA = [
     ("Behovsanalyse / kravspecifikation", "Kortlægning af, hvad et system/produkt skal kunne (fx "
      "før ERP-valg) — lavet ud fra brugernes faktiske behov i driften, ikke fra skrivebordet."),
 ]
+# Mange flere fakta-kort oven på de oprindelige (ingen fjernes).
+FAKTA = FAKTA + EKSTRA_FAKTA
 
 
 # ===========================================================================
