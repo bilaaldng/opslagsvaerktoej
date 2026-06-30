@@ -26,6 +26,7 @@ P_STAT = "pages/3_Statistik.py"
 P_OEKO = "pages/4_Økonomi.py"
 P_ORG = "pages/5_Organisation.py"
 P_KOMM = "pages/6_Kommunikation.py"
+P_FORSVAR = "pages/7_Forsvarstræner.py"
 
 # Fag-kort: (ikon, navn, side, modulbeskrivelse)
 FAG = [
@@ -47,6 +48,9 @@ FAG = [
      "Modelkatalog (Porter, Ansoff, McGregor, Blake & Mouton, Adizes, Hofstede …) · Modelvælger"),
     ("💬", "Kommunikation", P_KOMM,
      "Interessentanalyse · Forhandlingsark (MDO/LDO) · ZOPA · Forhandlingsbibliotek"),
+    ("🎓", "Forsvarstræner", P_FORSVAR,
+     "Træn det mundtlige forsvar · eksaminator borer dybere · argumentér selv (det afhænger) · "
+     "faktatjek · bygget til at træne HVORFOR, ikke ét rigtigt svar"),
 ]
 
 # Søgeindeks: hvert modul/begreb med nøgleord og hvilken side det ligger på
@@ -147,6 +151,11 @@ INDEX = [
     ("Kommunikation", "Forhandlingsbibliotek", P_KOMM, "💬",
      ["bapta", "batna", "alternativ", "principiel forhandling", "harvard", "distributiv",
       "integrativ", "kulturelle forhandlingsstile", "win-win"]),
+    # Forsvarstræner (mundtligt eksamensforsvar — argumentation)
+    ("Forsvarstræner", "Træn det mundtlige forsvar (hvorfor + argumenter)", P_FORSVAR, "🎓",
+     ["forsvar", "forsvarstræner", "eksamen", "mundtlig", "argumentation", "argument", "hvorfor",
+      "dybde", "snydespørgsmål", "snyd", "flashcards", "faktatjek", "det afhænger", "ddp", "erp",
+      "kraljic", "bensaou", "incoterms", "told", "duty"]),
 ]
 
 
