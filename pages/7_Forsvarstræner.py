@@ -19,6 +19,7 @@ import streamlit.components.v1 as components  # noqa: E402
 from ui_theme import inject_css  # noqa: E402
 from regn_data import REGN  # noqa: E402
 from pakke_spoergsmaal import KONCEPT  # noqa: E402
+from pakke_kaeder import EKSTRA_KAEDER  # noqa: E402
 import regnegen  # noqa: E402
 
 st.set_page_config(page_title="Forsvarstræner", page_icon="🎓", layout="wide")
@@ -268,6 +269,8 @@ KÆDER = [
         ],
     },
 ]
+# Læg de mange censur-verificerede dybde-kæder oven på de oprindelige (ingen fjernes).
+KÆDER = KÆDER + EKSTRA_KAEDER
 
 # Argumentér-selv: samme situation kan forsvares flere veje. Pointen er argumentet.
 ARGUMENTER = [
@@ -385,6 +388,10 @@ def _deeper(k):
 
 def _reset_kaede(k):
     ss[k] = 1
+
+
+def _drill_random():
+    ss.drill_emne = random.choice([k["emne"] for k in KÆDER])
 
 
 def _fc_flip():
@@ -597,7 +604,10 @@ with tab_drill:
         components.html(TIMER_HTML, height=60)
 
     emner = [k["emne"] for k in KÆDER]
-    valg = st.selectbox("Emne at forsvare", emner, key="drill_emne")
+    st.caption(f"{len(KÆDER)} emner at blive eksamineret i — vælg ét, eller få et tilfældigt.")
+    dc1, dc2 = st.columns([3, 1])
+    valg = dc1.selectbox("Emne at forsvare", emner, key="drill_emne")
+    dc2.button("🎲 Tilfældigt emne", on_click=_drill_random, use_container_width=True)
     kæde = next(k for k in KÆDER if k["emne"] == valg)
     nkey = f"drill_n_{valg}"
     if nkey not in ss:
