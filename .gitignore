@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Backup-filer
+*.bak-*
+
+# Streamlit secrets (læg ALDRIG hemmeligheder i repoet)
+.streamlit/secrets.toml
+
+# Homelab-specifik deployment — ikke nødvendig for Streamlit Cloud,
+# og holder din Tailscale-IP ude af det offentlige/delte repo.
+Dockerfile
+docker-compose.yml
+.dockerignore
