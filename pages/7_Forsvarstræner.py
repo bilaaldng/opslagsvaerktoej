@@ -14,6 +14,7 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui_theme import inject_css  # noqa: E402
+from regn_data import REGN  # noqa: E402
 
 st.set_page_config(page_title="Forsvarstræner", page_icon="🎓", layout="wide")
 inject_css()
@@ -404,14 +405,19 @@ st.title("🎓 Forsvarstræner")
 st.caption("Træn det mundtlige forsvar, hvor eksaminator borer dybere og dybere. Den generelle "
            "udgave af din gamle case-forsvarstræner — bygget til at træne *argumentet*.")
 
-st.warning("**Læreren vil høre HVORFOR.** Der er sjældent ét rigtigt svar — den samme leverandør "
-           "kan være *strategisk* i én optik og fx *flaskehals* i en anden. Det afgørende er, at "
-           "du kobler dit valg til modellens **kriterier**, argumenterer **konsistent**, og kan "
-           "forsvare det, selv når eksaminator foreslår det modsatte. Ren fakta (fx hvad DDP "
-           "betyder) skal sidde fast — *ovenpå* fakta bygger du argumentet.", icon="🧭")
+st.warning(
+    "**To slags spørgsmål — to slags svar:**\n\n"
+    "🧩 **Bløde fag** (strategi, organisation, leverandørrelationer): her er der sjældent ét "
+    "rigtigt svar — den samme leverandør kan være *strategisk* i én optik og *flaskehals* i en "
+    "anden. Det tæller, at du kobler valget til modellens **kriterier** og argumenterer "
+    "**konsistent** — og kan forsvare det, når eksaminator foreslår det modsatte.\n\n"
+    "🔢 **Regnefag** (især økonomi og statistik): her **ER** der et rigtigt svar — en NPV eller en "
+    "dækningsgrad er enten korrekt eller forkert. **Regn rigtigt** *og* kunne **fortolke** tallet. "
+    "Ren fakta (fx hvad DDP betyder) er fundamentet under begge dele."
+)
 
-tab_drill, tab_arg, tab_fakta = st.tabs([
-    "🎤 Eksaminator borer", "⚖️ Argumentér selv", "🧠 Faktatjek",
+tab_drill, tab_arg, tab_regn, tab_fakta = st.tabs([
+    "🎤 Eksaminator borer", "⚖️ Argumentér selv", "🔢 Regn & forklar", "🧠 Faktatjek",
 ])
 
 
@@ -474,6 +480,39 @@ with tab_arg:
                 st.success(f"🎯 {a['pointe']}")
 
 
+# --- Regn & forklar (rigtige svar) -----------------------------------------
+with tab_regn:
+    st.subheader("Regn & forklar — her ER der et rigtigt svar")
+    st.caption("De regnetunge fag. Læs spørgsmålet, regn det selv, og fold så ud for det korrekte "
+               "svar, udregningen, fortolkningen og en typisk fælde. Alle svar er genberegnet og "
+               "kontrolleret mod dine egne formler.")
+
+    regn_fag = list(dict.fromkeys(it["fag"] for it in REGN))
+    c1, c2 = st.columns([2, 1])
+    rsoeg = c1.text_input("Søg (fx 'npv', 'konfidens', 'eoq', 'oee')",
+                          key="regn_soeg").lower().strip()
+    rfag = c2.selectbox("Fag", ["Alle"] + regn_fag, key="regn_fag")
+
+    vist = 0
+    for it in REGN:
+        if rfag != "Alle" and it["fag"] != rfag:
+            continue
+        hay = (it["emne"] + " " + it["sp"] + " " + " ".join(it["soeg"])).lower()
+        if rsoeg and rsoeg not in hay:
+            continue
+        vist += 1
+        with st.container(border=True):
+            st.markdown(f"**{it['emne']}**  ·  *{it['fag']}*")
+            st.markdown(it["sp"])
+            with st.expander("Vis det rigtige svar + udregning"):
+                st.success(f"**Svar:** {it['svar']}")
+                st.markdown(f"**Udregning:** {it['metode']}")
+                st.markdown(f"**Fortolkning:** {it['fortolk']}")
+                st.warning(f"⚠️ **Typisk fælde:** {it['faelde']}")
+    if vist == 0:
+        st.info("Ingen opgaver matchede. Prøv et andet ord, eller vælg 'Alle' fag.")
+
+
 # --- Faktatjek (flashcards) ------------------------------------------------
 with tab_fakta:
     st.subheader("Faktatjek")
@@ -504,6 +543,8 @@ with tab_fakta:
 
 
 st.divider()
-st.caption("🤖 Bygget med Claude. Designet efter dit eget point: læreren vil høre *hvorfor*, og der "
-           "er sjældent ét rigtigt svar — kun argumenter du kan forsvare. Fakta-kortene er det "
-           "faste fundament. Sig til, hvis du vil have flere emner eller dine egne case-spørgsmål ind.")
+st.caption("🤖 Bygget med Claude. Designet efter dine egne pointer: i de bløde fag vil læreren høre "
+           "*hvorfor* (argumentet, ikke ét facit), mens regnefagene har rigtige svar, der skal "
+           "regnes korrekt og fortolkes. De 36 regneopgaver er forfattet og adversarielt "
+           "censur-kontrolleret mod dine egne formler. Sig til, hvis du vil have flere emner eller "
+           "dine egne case-spørgsmål ind.")

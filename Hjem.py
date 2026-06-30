@@ -49,8 +49,8 @@ FAG = [
     ("💬", "Kommunikation", P_KOMM,
      "Interessentanalyse · Forhandlingsark (MDO/LDO) · ZOPA · Forhandlingsbibliotek"),
     ("🎓", "Forsvarstræner", P_FORSVAR,
-     "Træn det mundtlige forsvar · eksaminator borer dybere · argumentér selv (det afhænger) · "
-     "faktatjek · bygget til at træne HVORFOR, ikke ét rigtigt svar"),
+     "Træn det mundtlige forsvar · eksaminator borer dybere · argumentér selv (bløde fag) · "
+     "regn & forklar (rigtige svar i økonomi/statistik) · faktatjek"),
 ]
 
 # Søgeindeks: hvert modul/begreb med nøgleord og hvilken side det ligger på
@@ -155,7 +155,8 @@ INDEX = [
     ("Forsvarstræner", "Træn det mundtlige forsvar (hvorfor + argumenter)", P_FORSVAR, "🎓",
      ["forsvar", "forsvarstræner", "eksamen", "mundtlig", "argumentation", "argument", "hvorfor",
       "dybde", "snydespørgsmål", "snyd", "flashcards", "faktatjek", "det afhænger", "ddp", "erp",
-      "kraljic", "bensaou", "incoterms", "told", "duty"]),
+      "kraljic", "bensaou", "incoterms", "told", "duty", "regn", "regneopgaver", "rigtige svar",
+      "npv", "break-even", "konfidensinterval", "eoq", "oee", "nøgletal"]),
 ]
 
 
