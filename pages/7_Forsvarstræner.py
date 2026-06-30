@@ -13,8 +13,13 @@ import sys
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import random  # noqa: E402
+import streamlit.components.v1 as components  # noqa: E402
+
 from ui_theme import inject_css  # noqa: E402
 from regn_data import REGN  # noqa: E402
+from pakke_spoergsmaal import KONCEPT  # noqa: E402
+import regnegen  # noqa: E402
 
 st.set_page_config(page_title="Forsvarstræner", page_icon="🎓", layout="wide")
 inject_css()
@@ -392,18 +397,135 @@ def _fc_step(d):
 
 
 def _fc_shuffle():
-    import random
     random.shuffle(ss.fc_order)
     ss.fc_pos = 0
     ss.fc_show = False
 
 
 # ===========================================================================
+# SAMLET POOL til "Eksaminér mig" (interleaved på tværs af alt)
+# ===========================================================================
+def _build_pool():
+    pool = []
+    for q in KONCEPT:
+        rev = [("Svar", q["svar"])]
+        if q.get("alt"):
+            rev.append(("Kan også forsvares", q["alt"]))
+        if q.get("fisker"):
+            rev.append(("Hvad eksaminator fisker efter", q["fisker"]))
+        pool.append({"id": f"k{len(pool)}", "fag": q["fag"], "emne": q["emne"],
+                     "sp": q["sp"], "reveal": rev})
+    for it in REGN:
+        pool.append({"id": f"r{len(pool)}", "fag": it["fag"], "emne": it["emne"], "sp": it["sp"],
+                     "reveal": [("Svar", it["svar"]), ("Udregning", it["metode"]),
+                                ("Fortolkning", it["fortolk"]), ("Typisk fælde", it["faelde"])]})
+    for a in ARGUMENTER:
+        rev = [(p["navn"], p["arg"]) for p in a["positioner"]]
+        rev.append(("Pointe", a["pointe"]))
+        pool.append({"id": f"a{len(pool)}", "fag": a["fag"].split("·")[0].strip(),
+                     "emne": a["fag"], "sp": a["situation"] + "\n\n**" + a["spm"] + "**",
+                     "reveal": rev})
+    for kæde in KÆDER:
+        L = kæde["lag"][0]
+        pool.append({"id": f"d{len(pool)}", "fag": kæde["fag"], "emne": kæde["emne"],
+                     "sp": L["sp"], "reveal": [("Sådan kan du argumentere", L["arg"])]})
+    return pool
+
+
+POOL = _build_pool()
+POOL_BY_ID = {p["id"]: p for p in POOL}
+POOL_FAG = ["Alle"] + sorted({p["fag"] for p in POOL})
+
+
+def _ex_filtered():
+    fag = ss.get("ex_fag", "Alle")
+    ids = [p["id"] for p in POOL if fag == "Alle" or p["fag"] == fag]
+    if ss.get("ex_kun_svaere"):
+        sv = ss.get("ex_svaere", set())
+        ids = [i for i in ids if i in sv]
+    return ids
+
+
+def _ex_draw():
+    ids = _ex_filtered()
+    if not ids:
+        ss.ex_cur = None
+        ss.ex_show = False
+        return
+    cur = ss.get("ex_cur")
+    valg = [i for i in ids if i != cur] or ids
+    ss.ex_cur = random.choice(valg)
+    ss.ex_show = False
+
+
+def _ex_reveal():
+    ss.ex_show = True
+
+
+def _ex_kunne():
+    sv = ss.get("ex_svaere", set())
+    sv.discard(ss.get("ex_cur"))
+    ss.ex_svaere = sv
+    _ex_draw()
+
+
+def _ex_svaer():
+    cur = ss.get("ex_cur")
+    if cur:
+        sv = ss.get("ex_svaere", set())
+        sv.add(cur)
+        ss.ex_svaere = sv
+    _ex_draw()
+
+
+def _rt_ny():
+    ss.rt_opg = regnegen.lav_opgave(ss.get("rt_fag", "Alle"))
+    ss.rt_svar = ""
+    ss.rt_facit = False
+    ss.rt_result = None
+
+
+def _rt_facit():
+    ss.rt_facit = True
+
+
+def _parse_tal(s):
+    s = s.strip().replace(" ", "")
+    cands = []
+    for variant in (s.replace(",", "."), s.replace(".", "").replace(",", ".")):
+        try:
+            cands.append(float(variant))
+        except ValueError:
+            pass
+    return cands
+
+
+def _facit_str(opg):
+    dec = opg.get("dec", 0)
+    s = f"{opg['svar']:,.{dec}f}".replace(",", "§").replace(".", ",").replace("§", ".")
+    return (s + " " + opg["enhed"]).strip()
+
+
+# Klient-side 30-sek. nedtælling (pres-tilstand) — kører i browseren, uafhængigt af reruns
+TIMER_HTML = """
+<div id="t" style="font:600 14px -apple-system,Segoe UI,sans-serif;color:#cbd5e1">⏱️ Sig svaret højt — <span id="s">30</span>s</div>
+<div style="height:8px;background:#1e293b;border-radius:6px;overflow:hidden;margin-top:5px">
+ <div id="b" style="height:100%;width:100%;background:#3b82f6;transition:width 1s linear"></div></div>
+<script>
+(function(){var n=30,s=document.getElementById('s'),b=document.getElementById('b'),t=document.getElementById('t');
+var iv=setInterval(function(){n--;if(n<=0){clearInterval(iv);s.textContent='0';b.style.width='0%';b.style.background='#ef4444';t.innerHTML='⏱️ Tiden er gået — kunne du svare flydende?';}else{s.textContent=n;b.style.width=(n/30*100)+'%';if(n<=10)b.style.background='#f59e0b';}},1000);})();
+</script>
+"""
+
+
+# ===========================================================================
 # RENDER
 # ===========================================================================
 st.title("🎓 Forsvarstræner")
-st.caption("Træn det mundtlige forsvar, hvor eksaminator borer dybere og dybere. Den generelle "
-           "udgave af din gamle case-forsvarstræner — bygget til at træne *argumentet*.")
+st.caption("Træn til eksamen på flere måder: **🎲 Eksaminér mig** (tilfældigt på tværs af alt), "
+           "**eksaminator borer** dybere, **argumentér selv**, **forklar selv** (Feynman), "
+           "**regn** med nye tal der retter sig selv, og **faktatjek**. Den generelle udgave af "
+           "din gamle case-forsvarstræner.")
 
 st.warning(
     "**To slags spørgsmål — to slags svar:**\n\n"
@@ -416,9 +538,53 @@ st.warning(
     "Ren fakta (fx hvad DDP betyder) er fundamentet under begge dele."
 )
 
-tab_drill, tab_arg, tab_regn, tab_fakta = st.tabs([
-    "🎤 Eksaminator borer", "⚖️ Argumentér selv", "🔢 Regn & forklar", "🧠 Faktatjek",
+tab_ex, tab_drill, tab_arg, tab_feyn, tab_regn, tab_fakta = st.tabs([
+    "🎲 Eksaminér mig", "🎤 Eksaminator borer", "⚖️ Argumentér selv",
+    "🗣️ Forklar selv", "🔢 Regn", "🧠 Faktatjek",
 ])
+
+
+# --- Eksaminér mig (interleaved, tilfældigt, aktiv genkaldelse + selvrating) ---
+with tab_ex:
+    st.subheader("Eksaminér mig — tilfældigt på tværs af det hele")
+    st.caption("Spørgsmål trækkes tilfældigt fra HELE værktøjet (modeller, begreber, værdikæde, "
+               "nøgletal, statistik). Sig/tænk dit svar FØR du folder ud — det er genkaldelsen, "
+               "der lærer dig det. Markér de svære, så de kommer igen.")
+
+    c1, c2, c3 = st.columns([1.5, 1, 1])
+    c1.selectbox("Fag", POOL_FAG, key="ex_fag")
+    c2.checkbox("Kun de svære", key="ex_kun_svaere", help="Træn kun dem, du har markeret som svære.")
+    c3.metric("Svære i kø", len(ss.get("ex_svaere", set())))
+
+    soeg = st.text_input("…eller søg et emne at træne (fx 'kraljic', 'npv', 'zopa')",
+                         key="ex_soeg").lower().strip()
+    if soeg:
+        hits = [p for p in POOL if soeg in (p["emne"] + " " + p["sp"] + " " + p["fag"]).lower()]
+        st.caption(f"{len(hits)} emner matcher — fold ud for svaret.")
+        for p in hits[:40]:
+            with st.expander(f"{p['emne']}  ·  {p['fag']}"):
+                st.markdown(p["sp"])
+                for lab, txt in p["reveal"]:
+                    st.markdown(f"**{lab}:** {txt}")
+    else:
+        st.button("🎲 Stil mig et spørgsmål", on_click=_ex_draw, type="primary")
+        cur = ss.get("ex_cur")
+        if not cur:
+            st.info("Tryk på knappen — så får du et tilfældigt spørgsmål fra hele pensum.")
+        else:
+            p = POOL_BY_ID[cur]
+            with st.container(border=True):
+                st.markdown(f"**{p['fag']}  ·  {p['emne']}**")
+                st.markdown(f"### {p['sp']}")
+                if not ss.get("ex_show"):
+                    st.caption("💭 Sig dit svar højt først.")
+                    st.button("👁️ Vis svar", on_click=_ex_reveal)
+                else:
+                    for lab, txt in p["reveal"]:
+                        st.markdown(f"**{lab}:** {txt}")
+                    cc1, cc2 = st.columns(2)
+                    cc1.button("✅ Kunne den", on_click=_ex_kunne, use_container_width=True)
+                    cc2.button("🔁 Svær — igen senere", on_click=_ex_svaer, use_container_width=True)
 
 
 # --- Dybde-drill -----------------------------------------------------------
@@ -426,6 +592,9 @@ with tab_drill:
     st.subheader("Eksaminator borer dybere")
     st.caption("Vælg et emne. Læs spørgsmålet, formulér dit svar højt eller i hovedet, fold så "
                "“Sådan kan du argumentere” ud — og tryk **Bor dybere** for næste, sværere lag.")
+
+    if st.checkbox("⏱️ Pres-tilstand — sig svaret højt på tid", key="drill_pres"):
+        components.html(TIMER_HTML, height=60)
 
     emner = [k["emne"] for k in KÆDER]
     valg = st.selectbox("Emne at forsvare", emner, key="drill_emne")
@@ -481,37 +650,92 @@ with tab_arg:
                 st.success(f"🎯 {a['pointe']}")
 
 
-# --- Regn & forklar (rigtige svar) -----------------------------------------
+# --- Forklar selv (Feynman) ------------------------------------------------
+with tab_feyn:
+    st.subheader("Forklar selv (Feynman)")
+    st.caption("Forklar begrebet i helt enkle ord, som om modparten aldrig har hørt om det. "
+               "Kan du ikke forklare det simpelt, ved du det ikke endnu. Sammenlign så med "
+               "modelsvaret.")
+    fey_emner = sorted({p["emne"] for p in KONCEPT})
+    valg = st.selectbox("Vælg et begreb at forklare", fey_emner, key="fey_emne")
+    item = next(p for p in KONCEPT if p["emne"] == valg)
+    st.markdown(f"**Forklar:** {valg}  ·  *{item['fag']}*")
+    st.text_area("Din forklaring (skriv — eller sig den højt og spring feltet over)",
+                 key="fey_txt", height=130,
+                 placeholder="Forklar det som til en, der aldrig har hørt om det…")
+    with st.expander("Vis modelsvar — sammenlign med din forklaring"):
+        st.markdown(item["svar"])
+        if item.get("fisker"):
+            st.info(f"💡 {item['fisker']}")
+
+
+# --- Regn (auto-træning + gennemregnede eksempler) -------------------------
 with tab_regn:
-    st.subheader("Regn & forklar — her ER der et rigtigt svar")
-    st.caption("De regnetunge fag. Læs spørgsmålet, regn det selv, og fold så ud for det korrekte "
-               "svar, udregningen, fortolkningen og en typisk fælde. Alle svar er genberegnet og "
-               "kontrolleret mod dine egne formler.")
+    st.subheader("Regn — her ER der et rigtigt svar")
+    mode = st.radio("Tilstand", ["🎯 Træn med nye tal (auto)", "📖 Gennemgå eksempler"],
+                    key="regn_mode", horizontal=True)
+    st.divider()
 
-    regn_fag = list(dict.fromkeys(it["fag"] for it in REGN))
-    c1, c2 = st.columns([2, 1])
-    rsoeg = c1.text_input("Søg (fx 'npv', 'konfidens', 'eoq', 'oee')",
-                          key="regn_soeg").lower().strip()
-    rfag = c2.selectbox("Fag", ["Alle"] + regn_fag, key="regn_fag")
-
-    vist = 0
-    for it in REGN:
-        if rfag != "Alle" and it["fag"] != rfag:
-            continue
-        hay = (it["emne"] + " " + it["sp"] + " " + " ".join(it["soeg"])).lower()
-        if rsoeg and rsoeg not in hay:
-            continue
-        vist += 1
+    if mode.startswith("🎯"):
+        st.caption("Friske opgaver med tilfældige tal, der **retter sig selv** mod værktøjets egne "
+                   "formler. Uendeligt mange — træn til metoden sidder fast.")
+        if "rt_opg" not in ss:
+            ss.rt_opg = regnegen.lav_opgave(ss.get("rt_fag", "Alle"))
+        c1, c2 = st.columns([1, 1])
+        c1.selectbox("Fag", ["Alle"] + regnegen.FAG_LISTE, key="rt_fag", on_change=_rt_ny)
+        c2.button("🎲 Ny opgave", on_click=_rt_ny, use_container_width=True)
+        opg = ss.rt_opg
         with st.container(border=True):
-            st.markdown(f"**{it['emne']}**  ·  *{it['fag']}*")
-            st.markdown(it["sp"])
-            with st.expander("Vis det rigtige svar + udregning"):
-                st.success(f"**Svar:** {it['svar']}")
-                st.markdown(f"**Udregning:** {it['metode']}")
-                st.markdown(f"**Fortolkning:** {it['fortolk']}")
-                st.warning(f"⚠️ **Typisk fælde:** {it['faelde']}")
-    if vist == 0:
-        st.info("Ingen opgaver matchede. Prøv et andet ord, eller vælg 'Alle' fag.")
+            st.markdown(f"**{opg['fag']}  ·  {opg['emne']}**")
+            st.markdown(f"### {opg['sp']}")
+            enhed = f" ({opg['enhed']})" if opg["enhed"] else ""
+            svar_input = st.text_input(f"Dit svar{enhed}", key="rt_svar", placeholder="Skriv et tal …")
+            b1, b2 = st.columns(2)
+            tjek = b1.button("✅ Tjek svar", use_container_width=True)
+            b2.button("Vis facit (giv op)", on_click=_rt_facit, use_container_width=True)
+            if tjek:
+                cands = _parse_tal(svar_input)
+                if not cands:
+                    st.warning("Skriv et tal først (fx 894 eller 20,9).")
+                else:
+                    ss.rt_facit = True
+                    ss.rt_result = ("rigtigt" if any(abs(c - opg["svar"]) <= opg["tol"]
+                                                     for c in cands) else "forkert")
+            if ss.get("rt_facit"):
+                res = ss.get("rt_result")
+                if res == "rigtigt":
+                    st.success(f"✅ Rigtigt! Facit: {_facit_str(opg)}")
+                elif res == "forkert":
+                    st.error(f"❌ Ikke helt. Facit: {_facit_str(opg)}")
+                else:
+                    st.info(f"Facit: {_facit_str(opg)}")
+                st.markdown(f"**Udregning:** {opg['metode']}")
+    else:
+        st.caption("Færdige, gennemregnede eksempler med fortolkning og typisk fælde — "
+                   "censur-kontrolleret mod dine egne formler.")
+        regn_fag = list(dict.fromkeys(it["fag"] for it in REGN))
+        c1, c2 = st.columns([2, 1])
+        rsoeg = c1.text_input("Søg (fx 'npv', 'konfidens', 'eoq', 'oee')",
+                              key="regn_soeg").lower().strip()
+        rfag = c2.selectbox("Fag", ["Alle"] + regn_fag, key="regn_fag")
+        vist = 0
+        for it in REGN:
+            if rfag != "Alle" and it["fag"] != rfag:
+                continue
+            hay = (it["emne"] + " " + it["sp"] + " " + " ".join(it["soeg"])).lower()
+            if rsoeg and rsoeg not in hay:
+                continue
+            vist += 1
+            with st.container(border=True):
+                st.markdown(f"**{it['emne']}**  ·  *{it['fag']}*")
+                st.markdown(it["sp"])
+                with st.expander("Vis det rigtige svar + udregning"):
+                    st.success(f"**Svar:** {it['svar']}")
+                    st.markdown(f"**Udregning:** {it['metode']}")
+                    st.markdown(f"**Fortolkning:** {it['fortolk']}")
+                    st.warning(f"⚠️ **Typisk fælde:** {it['faelde']}")
+        if vist == 0:
+            st.info("Ingen opgaver matchede. Prøv et andet ord, eller vælg 'Alle' fag.")
 
 
 # --- Faktatjek (flashcards) ------------------------------------------------
@@ -544,8 +768,8 @@ with tab_fakta:
 
 
 st.divider()
-st.caption("🤖 Bygget med Claude. Designet efter dine egne pointer: i de bløde fag vil læreren høre "
-           "*hvorfor* (argumentet, ikke ét facit), mens regnefagene har rigtige svar, der skal "
-           "regnes korrekt og fortolkes. De 36 regneopgaver er forfattet og adversarielt "
-           "censur-kontrolleret mod dine egne formler. Sig til, hvis du vil have flere emner eller "
-           "dine egne case-spørgsmål ind.")
+st.caption("🤖 Bygget med Claude. Spørgsmålsbanken dækker hele værktøjet (68 forsvarsspørgsmål "
+           "+ 36 gennemregnede opgaver, alle censur-kontrolleret) og regnetræneren laver "
+           "uendeligt mange nye opgaver, der retter sig selv mod dine egne formler. De svære, du "
+           "markerer i 🎲 Eksaminér mig, holdes i kø under sessionen. Sig til, hvis du vil have "
+           "endnu flere emner eller dine egne case-spørgsmål ind.")
