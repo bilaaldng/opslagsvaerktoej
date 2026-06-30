@@ -173,7 +173,9 @@ BLOKKE = [
                             "som langvarige relationer og netværk?",
                             "**Relation til leverandør – Bensaou** — placér leverandørerne i Bensaous "
                             "matrix (markedsudveksling, captive buyer, captive supplier, strategisk "
-                            "partner) efter hvem der har investeret mest i forholdet.",
+                            "partner) efter hvem der har investeret mest i forholdet (fx en lille "
+                            "standardskrue købt af mange = *markedsudveksling*; en skræddersyet "
+                            "nøglekomponent fra én leverandør = *strategisk partnerskab*).",
                             "**Exit/voice** — reagerer virksomheden på en dårlig leverandør ved at "
                             "*skifte* (exit) eller ved at *tale og forbedre* forholdet (voice)?",
                         ],
@@ -239,8 +241,10 @@ BLOKKE = [
                     {
                         "navn": "Transport ind",
                         "forklar": "Transportform/-måde fra leverandør til virksomhed / Incoterms — "
-                                   "hvordan fragtes varerne ind, og på hvilke vilkår (hvem bærer "
-                                   "risiko og omkostning undervejs — det afgør Incoterms).",
+                                   "hvordan fragtes varerne ind, og på hvilke vilkår? Incoterms "
+                                   "afgør hvem der bærer risiko og omkostning undervejs — fx *DDP* "
+                                   "(leverandøren betaler og bærer risikoen helt til din dør) vs. "
+                                   "*EXW* (du henter selv på leverandørens fabrik).",
                         "soeg": ["transport ind", "transportform", "incoterms", "fragt", "indgående"],
                     },
                     {
@@ -275,9 +279,11 @@ BLOKKE = [
                     },
                     {
                         "navn": "Ordretype",
-                        "forklar": "MTS, ATO, MTO, ETO — produceres der til lager (Make-To-Stock), "
-                                   "samles til ordre (Assemble-To-Order), laves til ordre "
-                                   "(Make-To-Order) eller udvikles helt til ordre (Engineer-To-Order)?",
+                        "forklar": "MTS, ATO, MTO, ETO — produceres der til lager (Make-To-Stock, "
+                                   "fx mælk på hylden), samles kendte dele til ordre "
+                                   "(Assemble-To-Order, fx en computer der konfigureres), laves til "
+                                   "ordre (Make-To-Order, fx en specialmaskine) eller udvikles helt "
+                                   "fra bunden til ordre (Engineer-To-Order, fx et broprojekt)?",
                         "link": L_PROD,
                         "soeg": ["ordretype", "mts", "ato", "mto", "eto", "make to stock", "make to order"],
                     },
@@ -414,9 +420,11 @@ BLOKKE = [
                         "navn": "Liste af udfordringer",
                         "forklar": "Saml de problemer du fandt undervejs ét sted: en liste over "
                                    "virksomhedens udfordringer (fx silotænkning, høj "
-                                   "personaleomsætning, dårlig leveringspræcision). Det er den liste "
-                                   "din analyse og dine løsningsforslag tager udgangspunkt i — den "
-                                   "binder hele VCA'en sammen til en konklusion.",
+                                   "personaleomsætning, dårlig leveringspræcision, manglende "
+                                   "harmoni). Her *identificerer* du problemerne — selve "
+                                   "løsningerne og anbefalingerne skrives i en separat del bagefter, "
+                                   "**ikke inde i værdikæden**. Listen binder analysen sammen og er "
+                                   "afsættet for konklusionen.",
                         "soeg": ["udfordringer", "liste af udfordringer", "problemer", "konklusion"],
                     },
                     {
@@ -451,6 +459,30 @@ st.caption("Hvordan en værdikædeanalyse bygges punkt for punkt — Porters væ
 st.info("**ALT HERINDE BØR BRUGES** — så længe du har oplysningerne, der er relevante fra den "
         "pågældende virksomhed. Mangler du data til en station, så spring den over; du behøver "
         "ikke presse alle punkter ind for enhver pris.", icon="🧭")
+
+st.warning("**Værdikæden er en *analyse* — ikke løsninger.** Du beskriver og vurderer, hvordan "
+           "virksomheden faktisk gør på hver station (styrker, svagheder, og om det passer med "
+           "strategien). Skriv **aldrig løsningsforslag ind i selve værdikæden** — fx ikke \"de bør "
+           "skifte til JIT\". Problemerne du finder, noteres i **Liste af udfordringer**, og selve "
+           "løsningerne/anbefalingerne kommer i en separat del *bagefter*. Hold kæden beskrivende "
+           "og analyserende.", icon="⚠️")
+
+with st.expander("🧭 Sådan skriver du en station — metode + eksempel"):
+    st.markdown(
+        "Hver station skrives i samme rytme:\n"
+        "1. **Beskriv** hvad virksomheden gør (fakta fra casen).\n"
+        "2. **Kobl til en model/begreb** (fx ordretype = MTO, relation = Bensaou).\n"
+        "3. **Vurdér** — er det en styrke eller en svaghed? Passer det med strategien "
+        "(*harmoni*)? Hvilken udfordring skaber det?\n"
+        "4. **Ingen løsning her.** Udfordringen ryger på listen; anbefalingen skrives bagefter."
+    )
+    st.markdown("**Eksempel — Produktionsstyring:**")
+    st.error("❌ *Løsning i kæden (forkert):* “Virksomheden bør indføre JIT for at nedbringe "
+             "lageret.”")
+    st.success("✅ *Analyse (rigtigt):* “Produktionen styres efter MRP, hvor der planlægges ud "
+               "fra forventet behov. Det binder kapital i råvarelageret og passer dårligt med den "
+               "responsive konkurrencestrategi — altså manglende harmoni. Det høje lager er en "
+               "svaghed, som noteres i listen af udfordringer.”")
 
 soeg = st.text_input(
     "🔍 Søg i værdikæden",
