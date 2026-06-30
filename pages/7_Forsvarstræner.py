@@ -439,14 +439,15 @@ with tab_drill:
 
     for i in range(n):
         L = kæde["lag"][i]
-        mærker = ""
-        if L.get("snyd"):
-            mærker += "  🪤 *snydespørgsmål*"
-        if L.get("fakta"):
-            mærker += "  📌 *fakta*"
+        # Bemærk: ingen "snyd"-mærke på selve spørgsmålet — fælden må ikke afsløres,
+        # før man har svaret. Den indrømmes først i svaret nedenfor.
+        mærke = "  📌 *fakta*" if L.get("fakta") else ""
         with st.container(border=True):
-            st.markdown(f"**Lag {i + 1} — eksaminator:** {L['sp']}{mærker}")
+            st.markdown(f"**Lag {i + 1} — eksaminator:** {L['sp']}{mærke}")
             with st.expander("💬 Sådan kan du argumentere"):
+                if L.get("snyd"):
+                    st.markdown("🪤 **Det her var et snydespørgsmål** — det intuitive svar er en "
+                                "fælde. Sådan griber du det rigtigt an:")
                 st.markdown(L["arg"])
                 if L.get("alt"):
                     st.markdown(f"🔄 **Kan også forsvares:** {L['alt']}")
