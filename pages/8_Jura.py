@@ -9,6 +9,7 @@ Artikelhenvisningerne er CISG (den internationale købelov); Incoterms er 2020.
 import os
 import sys
 
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -26,76 +27,147 @@ st.caption("Indkøbsjura som opslagsværk: Incoterms (hvor går risikoen over?),
            "reglen, fakta og din kobling — sjældent bare et facit.")
 
 # ===========================================================================
-# DATA — Incoterms (risikoovergangspunkt på en fælles transport-tidslinje)
+# DATA — Incoterms 2020 (alle 11) på en fælles transport-tidslinje
 # ===========================================================================
-# 'punkt' er position på tidslinjen 0-5 hvor risikoen springer fra sælger til køber
-TRIN = ["Sælgers lager", "Læsset /\nafhentet", "Afskibnings-\nhavn",
+# 'risiko_punkt' = hvor RISIKOEN springer fra sælger til køber (det juridisk vigtige).
+# 'omk_punkt'    = hvor SÆLGER holder op med at betale (fragt/forsikring).
+# For C-gruppen er de to FORSKELLIGE — det er hele fælden.
+TRIN = ["Sælgers\nlager", "Overdraget til\nfragtfører", "Langs skibet\n(kaj)",
         "Om bord\npå skibet", "Ankomst-\nhavn", "Hos køber\n(destination)"]
 
+# familie: E/F/C/D · mode: "alle" (enhver transportform) eller "sø" (kun sø/indre vandvej)
 INCOTERMS = [
     {
-        "kode": "EXW", "navn": "EXW — Ex Works (ab fabrik)", "punkt": 0,
+        "kode": "EXW", "navn": "EXW — Ex Works (ab fabrik)", "familie": "E", "mode": "alle",
+        "risiko_punkt": 0, "omk_punkt": 0,
         "risiko": "Risikoen overgår allerede når varen er **stillet til rådighed på sælgers "
                   "adresse** — køber står selv for læsning, transport, eksport og import.",
-        "siger": "Sælgers mindste forpligtelse: han skal bare gøre varen klar på sit eget lager. "
-                 "Alt derfra — læsning, fragt, forsikring, told — er købers problem og risiko.",
-        "her": "Modpolen til DDP. Brug EXW/DDP som yderpunkterne når du skal forklare, hvor "
-               "meget ansvar parterne hver især har taget på sig i kontrakten.",
+        "siger": "Sælgers mindste forpligtelse: gøre varen klar på eget lager. Alt derfra — "
+                 "læsning, fragt, forsikring, told — er købers problem og risiko.",
+        "her": "Modpolen til DDP. Brug EXW/DDP som yderpunkterne når du forklarer, hvor meget "
+               "ansvar parterne hver især har taget på sig.",
         "soeg": ["exw", "ex works", "ab fabrik", "afhentning"],
     },
     {
-        "kode": "FOB", "navn": "FOB — Free On Board", "punkt": 3,
+        "kode": "FCA", "navn": "FCA — Free Carrier", "familie": "F", "mode": "alle",
+        "risiko_punkt": 1, "omk_punkt": 1,
+        "risiko": "Risikoen overgår når varen er **overdraget til den fragtfører, køber har "
+                  "udpeget** (på sælgers plads eller et aftalt sted). Enhver transportform.",
+        "siger": "Sælger klarer eksport og læsser (hvis afhentning sker hos ham); derfra bærer "
+                 "køber fragt og risiko. FCA er 'container-versionen' af FOB — den rigtige at "
+                 "bruge, når godset går i container og overdrages i en terminal, ikke om bord.",
+        "her": "Til enhver transportform (vej, bane, fly, container). Vælg FCA frem for FOB når "
+               "godset overdrages FØR skibet — fx i en containerterminal.",
+        "soeg": ["fca", "free carrier", "fragtfører", "container", "terminal", "enhver transportform"],
+    },
+    {
+        "kode": "FAS", "navn": "FAS — Free Alongside Ship", "familie": "F", "mode": "sø",
+        "risiko_punkt": 2, "omk_punkt": 2,
+        "risiko": "Risikoen overgår når varen er **stillet langs skibets side (på kajen)** i "
+                  "afskibningshavnen. Kun sø- og indre vandvejstransport.",
+        "siger": "Sælger leverer varen ved skibssiden; derfra betaler og bærer køber lastning, "
+                 "søfragt og risiko. Bruges typisk til bulk/stykgods der ikke lastes med kran "
+                 "som containere.",
+        "her": "Sø-only. Mellemtrin mellem EXW og FOB: sælger når helt ned til kajen, men "
+               "lastningen om bord er købers.",
+        "soeg": ["fas", "free alongside ship", "kaj", "langs skibet", "søtransport"],
+    },
+    {
+        "kode": "FOB", "navn": "FOB — Free On Board", "familie": "F", "mode": "sø",
+        "risiko_punkt": 3, "omk_punkt": 3,
         "risiko": "Risikoen overgår når varen er **om bord på skibet i afskibningshavnen**. "
-                  "Kun til søtransport.",
-        "siger": "Sælger leverer varen om bord på det skib, køber har udpeget. Fra det øjeblik "
-                 "bærer køber risikoen og betaler hovedtransport — og forsikring er KØBERS "
-                 "eget valg og egen regning.",
-        "her": "Eksempel: en køber aftaler 'FOB afskibningshavn', og godset går tabt undervejs "
-               "OVER havet — altså efter lastning. Så er det købers risiko, og køber bærer "
-               "tabet, medmindre han selv har tegnet transportforsikring. Vil køber sikre sig "
-               "bedre, kan han vælge en klausul hvor sælger bærer mere (CIF/CIP eller DAP/DDP).",
-        "soeg": ["fob", "free on board", "container", "overbord", "søtransport"],
+                  "Kun søtransport.",
+        "siger": "Sælger leverer om bord på det skib, køber har udpeget. Fra det øjeblik bærer "
+                 "køber risikoen og betaler hovedtransport — forsikring er KØBERS eget valg.",
+        "her": "Typisk fælde: 'FOB afskibningshavn', og godset går tabt OVER havet (efter "
+               "lastning) → købers risiko. Vil køber sikres bedre, så vælg CIF/CIP eller DAP/DDP.",
+        "soeg": ["fob", "free on board", "om bord", "container", "overbord", "søtransport"],
     },
     {
-        "kode": "CIF", "navn": "CIF — Cost, Insurance & Freight", "punkt": 3,
-        "risiko": "Risikoen overgår **samme sted som FOB** (om bord i afskibningshavnen) — "
-                  "selvom sælger betaler fragt og forsikring helt til ankomsthavnen.",
-        "siger": "Sælger betaler fragten OG tegner en søforsikring til ankomsthavnen — men "
-                 "risikoen er alligevel købers fra lastningen. Omkostninger og risiko følges "
-                 "altså IKKE ad. Kun til søtransport.",
-        "her": "Den klassiske eksamensfælde: 'sælger betaler til ankomsthavnen, så sælger "
-               "bærer vel risikoen?' Nej — går godset tabt undervejs, er det købers risiko, "
-               "men køber kan trække på den forsikring sælger har tegnet. Derfor er CIF et "
-               "oplagt svar på, hvordan en køber kan sikre sig mod tab under søtransport uden "
-               "selv at skulle tegne forsikringen.",
-        "soeg": ["cif", "cost insurance freight", "forsikring", "fragt", "søtransport"],
+        "kode": "CFR", "navn": "CFR — Cost and Freight", "familie": "C", "mode": "sø",
+        "risiko_punkt": 3, "omk_punkt": 4,
+        "risiko": "**Split:** risikoen overgår allerede når varen er **om bord** (som FOB) — "
+                  "men sælger BETALER fragten helt til **ankomsthavnen**. Kun søtransport.",
+        "siger": "Sælger betaler søfragten til ankomsthavnen, men risikoen er købers fra "
+                 "lastningen. Ingen forsikring (det er forskellen til CIF).",
+        "her": "C-gruppens kerne: omkostning og risiko følges IKKE ad. Sælger betaler langt, "
+               "men hæfter ikke for et tab undervejs.",
+        "soeg": ["cfr", "cost and freight", "fragt", "split", "søtransport"],
     },
     {
-        "kode": "DAP", "navn": "DAP — Delivered At Place", "punkt": 5,
+        "kode": "CIF", "navn": "CIF — Cost, Insurance & Freight", "familie": "C", "mode": "sø",
+        "risiko_punkt": 3, "omk_punkt": 4,
+        "risiko": "**Split (som CFR + forsikring):** risikoen overgår **om bord**, men sælger "
+                  "betaler fragt OG tegner søforsikring til **ankomsthavnen**. Kun søtransport.",
+        "siger": "Som CFR, men sælger tegner også (minimums-)forsikring til fordel for køber. "
+                 "Risikoen er stadig købers fra lastningen — forsikringen dækker bare tabet.",
+        "her": "Den klassiske eksamensfælde: 'sælger betaler til ankomst, så bærer sælger vel "
+               "risikoen?' Nej — går godset tabt undervejs, er det købers risiko, men køber kan "
+               "trække på den forsikring, sælger har tegnet.",
+        "soeg": ["cif", "cost insurance freight", "forsikring", "fragt", "split", "søtransport"],
+    },
+    {
+        "kode": "CPT", "navn": "CPT — Carriage Paid To", "familie": "C", "mode": "alle",
+        "risiko_punkt": 1, "omk_punkt": 5,
+        "risiko": "**Split, ekstra tidligt:** risikoen overgår allerede når varen er "
+                  "**overdraget til FØRSTE fragtfører** — men sælger betaler fragten helt til "
+                  "**destinationen**. Enhver transportform.",
+        "siger": "CPT er FCA + sælger betaler hovedfragten. Men risikoen springer meget tidligt "
+                 "(ved første fragtfører), selvom sælger betaler hele vejen frem.",
+        "her": "Den største 'gotcha': her er afstanden mellem risiko (tidligt) og omkostning "
+               "(destination) størst. Køber bærer risiko på en transport, sælger betaler for.",
+        "soeg": ["cpt", "carriage paid to", "fragtfører", "split", "enhver transportform"],
+    },
+    {
+        "kode": "CIP", "navn": "CIP — Carriage & Insurance Paid To", "familie": "C", "mode": "alle",
+        "risiko_punkt": 1, "omk_punkt": 5,
+        "risiko": "**Som CPT + forsikring:** risikoen overgår ved **første fragtfører**, men "
+                  "sælger betaler fragt OG tegner forsikring til **destinationen**. Enhver form.",
+        "siger": "CIP er CPT med forsikring — og i Incoterms 2020 skal forsikringen være den "
+                 "høje dækning (Institute Cargo Clauses A), modsat CIF's minimumsdækning.",
+        "her": "Container-versionen af CIF. Vælg CIP frem for CIF når godset ikke går som "
+               "søfragt om bord, men i container/multimodal transport.",
+        "soeg": ["cip", "carriage insurance paid", "forsikring", "container", "split"],
+    },
+    {
+        "kode": "DAP", "navn": "DAP — Delivered At Place", "familie": "D", "mode": "alle",
+        "risiko_punkt": 5, "omk_punkt": 5,
         "risiko": "Risikoen overgår når varen er **ankommet til det aftalte sted, klar til "
-                  "aflæsning** hos køber.",
+                  "aflæsning** hos køber (køber aflæsser selv). Enhver transportform.",
         "siger": "Sælger bærer transport og risiko hele vejen til destinationen — men køber "
-                 "klarer selv importtold og importmoms. Forskellen på DAP og DDP er altså "
-                 "kun tolden.",
-        "her": "Brug DAP som mellemtrin når du sammenligner: mere sælgeransvar end FOB/CIF, "
-               "men uden DDP's told-forpligtelse.",
-        "soeg": ["dap", "delivered at place", "destination", "told"],
+                 "aflæsser og klarer selv importtold og -moms.",
+        "her": "Mellemtrin i D-gruppen: mere sælgeransvar end C/F-termerne, men uden DDP's "
+               "told-forpligtelse. Forskellen til DPU er kun, hvem der aflæsser.",
+        "soeg": ["dap", "delivered at place", "destination", "aflæsning", "told"],
     },
     {
-        "kode": "DDP", "navn": "DDP — Delivered Duty Paid ⭐", "punkt": 5,
+        "kode": "DPU", "navn": "DPU — Delivered At Place Unloaded", "familie": "D", "mode": "alle",
+        "risiko_punkt": 5, "omk_punkt": 5,
+        "risiko": "Risikoen overgår først når varen er **ankommet OG aflæsset** på det aftalte "
+                  "sted. Enhver transportform. (Hed DAT i Incoterms 2010.)",
+        "siger": "Den ENESTE Incoterm hvor sælger også skal AFLÆSSE varen på destinationen. "
+                 "Ellers som DAP: køber klarer importtold.",
+        "her": "Nyt navn i 2020 (tidligere DAT). Vælg DPU frem for DAP når det er vigtigt, at "
+               "sælger står for aflæsningen — fx tungt gods der kræver sælgers udstyr.",
+        "soeg": ["dpu", "delivered at place unloaded", "dat", "aflæsset", "2020"],
+    },
+    {
+        "kode": "DDP", "navn": "DDP — Delivered Duty Paid ⭐", "familie": "D", "mode": "alle",
+        "risiko_punkt": 5, "omk_punkt": 5,
         "risiko": "Risikoen overgår først når varen er **stillet til rådighed hos køber på "
-                  "destinationen** — og sælger har også betalt told og importafgifter.",
-        "siger": "Sælgers STØRSTE forpligtelse: han bærer alle omkostninger og al risiko — "
-                 "inkl. told og importafgifter — indtil varen står klar hos køber. "
-                 "Transportøren undervejs er bare sælgers hjælper.",
-        "her": "Eksempel og typisk fælde: aftalen siger 'DDP destinationsby'. Sker der en "
-               "transportskade UNDERVEJS — fx traileren vælter før destinationen — er risikoen "
-               "endnu ikke overgået, så SÆLGER bærer tabet og skal omlevere. Argumentet "
-               "'risikoen overgik da varen forlod sælgers lager' er forkert: under DDP flytter "
-               "selve afsendelsen ikke risikoen.",
+                  "destinationen** — og sælger har også betalt **told og importafgifter**.",
+        "siger": "Sælgers STØRSTE forpligtelse: alle omkostninger og al risiko — inkl. told og "
+                 "importafgifter — indtil varen står klar hos køber.",
+        "her": "Typisk fælde: 'DDP destinationsby', og traileren vælter FØR destinationen → "
+               "risikoen er endnu ikke overgået, så SÆLGER bærer tabet og skal omlevere. "
+               "'Risikoen overgik da varen forlod lageret' er forkert under DDP.",
         "soeg": ["ddp", "delivered duty paid", "risikoovergang", "told", "omlevering"],
     },
 ]
+
+FAM_NAVN = {"E": "E — afhentning", "F": "F — hovedfragt betales af køber",
+            "C": "C — hovedfragt betales af sælger (men risiko tidligt)",
+            "D": "D — ankomst (sælger bærer helt frem)"}
 
 # ===========================================================================
 # DATA — jurakatalog ("Hvad den siger" + "Hvorfor her")
@@ -325,58 +397,91 @@ with tab_kat:
 # ===========================================================================
 with tab_inco:
     st.subheader("Incoterms 2020 — hvor går risikoen over?")
-    st.caption("Én tidslinje fra sælgers lager til købers adresse. Den røde ruder-markør er "
-               "**risikoovergangspunktet**: til venstre for den bærer sælger risikoen (blå), "
-               "til højre bærer køber den (gul). Hold musen over et punkt for detaljer.")
+    st.caption("Tidslinjen går fra sælgers lager (venstre) til købers adresse (højre). Den røde "
+               "ruder ◆ er **risikoovergangen** — til venstre bærer sælger risikoen (blå), til "
+               "højre køber (gul). Den åbne ring ○ viser, **hvor langt sælger BETALER** "
+               "(fragt/forsikring). Ligger de to ikke samme sted, er det C-gruppens fælde.")
 
     fig = go.Figure()
     n = len(INCOTERMS)
     for i, ic in enumerate(INCOTERMS):
         y = n - 1 - i  # EXW øverst, DDP nederst
-        p = ic["punkt"]
-        hover = (f"<b>{ic['kode']}</b> — risikoen overgår ved: "
-                 f"{TRIN[p].replace(chr(10), ' ')}<extra></extra>")
-        if p > 0:
-            fig.add_trace(go.Scatter(x=[0, p], y=[y, y], mode="lines",
+        rp, op = ic["risiko_punkt"], ic["omk_punkt"]
+        mode_txt = "kun søtransport" if ic["mode"] == "sø" else "enhver transportform"
+        hover = (f"<b>{ic['kode']}</b> · {mode_txt}<br>"
+                 f"◆ Risiko → køber ved: {TRIN[rp].replace(chr(10), ' ')}<br>"
+                 f"○ Sælger betaler til: {TRIN[op].replace(chr(10), ' ')}<extra></extra>")
+        # risiko-split-bjælke (blå = sælger, gul = køber)
+        if rp > 0:
+            fig.add_trace(go.Scatter(x=[0, rp], y=[y, y], mode="lines",
                                      line=dict(color=C_TOTAL, width=7),
                                      hoverinfo="skip", showlegend=False))
-        if p < 5:
-            fig.add_trace(go.Scatter(x=[p, 5], y=[y, y], mode="lines",
+        if rp < 5:
+            fig.add_trace(go.Scatter(x=[rp, 5], y=[y, y], mode="lines",
                                      line=dict(color=C_ORDER, width=7),
                                      hoverinfo="skip", showlegend=False))
-        fig.add_trace(go.Scatter(x=[p], y=[y], mode="markers",
-                                 marker=dict(color=C_OPT, size=15, symbol="diamond"),
+        # stiplet forbindelse ring↔ruder når de er adskilt (C-gruppen)
+        if op != rp:
+            lo, hi = sorted([rp, op])
+            fig.add_trace(go.Scatter(x=[lo, hi], y=[y, y], mode="lines",
+                                     line=dict(color=C_TOTAL, width=1.5, dash="dot"),
+                                     hoverinfo="skip", showlegend=False))
+        # omkostnings-markør (hvor langt sælger betaler) — åben ring
+        fig.add_trace(go.Scatter(x=[op], y=[y], mode="markers",
+                                 marker=dict(color="rgba(0,0,0,0)", size=17, symbol="circle",
+                                             line=dict(color=C_TOTAL, width=2.5)),
                                  hovertemplate=hover, showlegend=False))
-    # Legendeforklaring via to usynlige spor
+        # risiko-markør (rød ruder) — ovenpå
+        fig.add_trace(go.Scatter(x=[rp], y=[y], mode="markers",
+                                 marker=dict(color=C_OPT, size=13, symbol="diamond"),
+                                 hovertemplate=hover, showlegend=False))
+    # Legende
     fig.add_trace(go.Scatter(x=[None], y=[None], mode="lines",
                              line=dict(color=C_TOTAL, width=7), name="Sælger bærer risikoen"))
     fig.add_trace(go.Scatter(x=[None], y=[None], mode="lines",
                              line=dict(color=C_ORDER, width=7), name="Køber bærer risikoen"))
     fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers",
                              marker=dict(color=C_OPT, size=12, symbol="diamond"),
-                             name="Risikoen springer her"))
+                             name="◆ Risikoen springer"))
+    fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers",
+                             marker=dict(color="rgba(0,0,0,0)", size=13, symbol="circle",
+                                         line=dict(color=C_TOTAL, width=2.5)),
+                             name="○ Sælger betaler til"))
     fig.update_layout(
-        height=340,
-        xaxis=dict(tickmode="array", tickvals=list(range(6)), ticktext=TRIN,
-                   range=[-0.3, 5.3]),
+        height=30 * n + 130,
+        xaxis=dict(tickmode="array", tickvals=list(range(6)), ticktext=TRIN, range=[-0.3, 5.3]),
         yaxis=dict(tickmode="array", tickvals=list(range(n)),
                    ticktext=[ic["kode"] for ic in reversed(INCOTERMS)],
                    range=[-0.6, n - 0.4]),
-        legend=dict(orientation="h", y=1.12),
-        margin=dict(t=30, b=10),
+        legend=dict(orientation="h", y=1.06),
+        margin=dict(t=45, b=10),
     )
     vis_fig(fig)
-    st.caption("Læg mærke til CIF-fælden: sælger betaler fragt og forsikring helt til "
-               "ankomsthavnen, men risikoen er sprunget allerede ved lastningen — omkostninger "
-               "og risiko følges ikke ad. Og DAP/DDP deler overgangspunkt: forskellen er kun, "
-               "hvem der betaler told og importafgifter (DDP = sælger).")
+    st.caption("**C-gruppens fælde (CFR/CIF/CPT/CIP):** ringen ○ ligger til HØJRE for ruden ◆ — "
+               "sælger betaler fragten langt frem, men risikoen sprang allerede tidligt. Går "
+               "godset tabt undervejs, er det KØBERS tab, selvom sælger betalte transporten. Ved "
+               "CPT/CIP er afstanden størst (risiko ved første fragtfører, betaling helt til "
+               "destinationen).")
+
+    st.markdown("**Hurtig oversigt (alle 11):**")
+    df_inco = pd.DataFrame([{
+        "Kode": ic["kode"],
+        "Familie": ic["familie"],
+        "Transport": "Kun sø" if ic["mode"] == "sø" else "Enhver",
+        "Risikoen går over": TRIN[ic["risiko_punkt"]].replace("\n", " "),
+        "Sælger betaler til": TRIN[ic["omk_punkt"]].replace("\n", " "),
+    } for ic in INCOTERMS])
+    st.dataframe(df_inco, hide_index=True, width="stretch")
 
     st.divider()
-    for ic in INCOTERMS:
-        with st.expander(ic["navn"], expanded=ic["kode"] == "DDP"):
-            st.markdown(f"**Hvad den siger:** {ic['siger']}")
-            st.markdown(f"**Risikoen overgår:** {ic['risiko']}")
-            st.markdown(f"**Hvorfor her:** {ic['her']}")
+    for fam in ["E", "F", "C", "D"]:
+        st.markdown(f"**{FAM_NAVN[fam]}**")
+        for ic in [x for x in INCOTERMS if x["familie"] == fam]:
+            titel = ic["navn"] + (" · kun søtransport" if ic["mode"] == "sø" else "")
+            with st.expander(titel, expanded=ic["kode"] == "DDP"):
+                st.markdown(f"**Hvad den siger:** {ic['siger']}")
+                st.markdown(f"**Risikoen overgår:** {ic['risiko']}")
+                st.markdown(f"**Hvorfor her:** {ic['her']}")
     st.caption("⭐ DDP er ofte den eksamensrelevante: en transportskade FØR destinationen ligger "
                "hos sælger — se den fulde argumentationskæde under fanen 🧭 Tvist-skabeloner.")
 

@@ -65,7 +65,7 @@ FAG = [
 ]
 if HAR_JURA:
     FAG.insert(7, ("⚖️", "Jura", P_JURA,
-                   "Incoterms med risikoovergang (EXW/FOB/CIF/DAP/DDP) · CISG-beføjelser "
+                   "Alle 11 Incoterms 2020 med risiko- og omkostningsovergang · CISG-beføjelser "
                    "og frister · Standardvilkår · Reklamation · Hvem bærer risikoen?"))
 
 # Søgeindeks: (fag, modul, side, ikon, nøgleord, modul-deep-link eller None)
@@ -217,8 +217,9 @@ INDEX = [
 if HAR_JURA:
     INDEX += [
         ("Jura", "Incoterms — risikoens overgang", P_JURA, "⚖️",
-         ["incoterms", "exw", "fob", "cif", "dap", "ddp", "risikoovergang", "risikoens overgang",
-          "told", "transportør", "fragt", "forsikring"], None),
+         ["incoterms", "exw", "fca", "fas", "fob", "cfr", "cif", "cpt", "cip", "dap", "dpu", "ddp",
+          "risikoovergang", "risikoens overgang", "told", "transportør", "fragt", "forsikring",
+          "e f c d gruppe"], None),
         ("Jura", "CISG — beføjelser og frister", P_JURA, "⚖️",
          ["cisg", "købelov", "reklamation", "reklamationsfrist", "undersøgelsespligt",
           "misligholdelse", "ophævelse", "erstatning", "følgeskader", "mangler"], None),
