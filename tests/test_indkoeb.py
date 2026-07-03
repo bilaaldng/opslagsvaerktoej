@@ -69,6 +69,44 @@ def test_abc_nordic():
     assert approx(summ["Andel af værdi %"].sum(), 1.0)
 
 
+# --- ABC: degenerat case — topvaren dominerer ------------------------------
+def test_abc_degenerat_topvare():
+    # Én vare udgør 96 % af værdien. Den SKAL være A (må aldrig blive B/C),
+    # selv om dens egen akkumulerede andel (0,96) ligger over A-grænsen.
+    data = pd.DataFrame({
+        "Betegnelse": ["Stor", "Lille 1", "Lille 2"],
+        "Årligt forbrug": [960, 20, 20],
+        "Enhedspris": [100, 100, 100],
+    })
+    res = ik.abc_analysis(data)
+    assert res["Kategori"].iloc[0] == "A"
+    # De to små varer ligger efter 96 %-punktet -> C
+    assert list(res["Kategori"].iloc[1:]) == ["C", "C"]
+
+
+# --- TCA-totalpris: DSS-notationen (leverandørsammenligning) ---------------
+def test_tca_totalpris():
+    # Håndregnet facit: behov=600, pris=100/stk -> varekøb 60.000
+    # defekt: (1-0,95)*600*400 = 12.000
+    # fragt: 500 kr./læs à 60 stk -> 10 læs -> 5.000
+    # ordre: 250 kr. * 12 ordrer = 3.000  =>  total 80.000
+    s = ik.tca_totalpris(behov=600, pris_pr_stk=100, uden_defekt_pct=0.95,
+                         defektpris=400, fragt_pr_laes=500,
+                         laes_stoerrelse=60, ordreomkostning=250,
+                         antal_ordrer=12)
+    assert approx(s["varekoeb"], 60000)
+    assert approx(s["defektomkostning"], 12000)
+    assert approx(s["antal_laes"], 10)
+    assert approx(s["fragtomkostning"], 5000)
+    assert approx(s["ordreomkostning_total"], 3000)
+    assert approx(s["total"], 80000)
+    assert approx(s["totalpris_pr_stk"], 80000 / 600)
+    # Perfekt leverandør (100 % uden defekt) -> ingen defektomkostning
+    s2 = ik.tca_totalpris(600, 100, 1.0, 400, 500, 60, 250, 12)
+    assert s2["defektomkostning"] == 0
+    assert approx(s2["total"], 68000)
+
+
 # --- ROP / SS: Nordic Components "Stormkøkken S" --------------------------
 # D=7800, sigma=11/uge, L=2 uger, z(95%)=1.65 -> SS=1.65*11*sqrt(2)
 def test_rop_nordic():

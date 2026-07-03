@@ -75,10 +75,14 @@ def oee(planned_time: float, downtime: float, ideal_cycle_time: float,
     planned_time, downtime: samme tidsenhed (fx min.).
     ideal_cycle_time: ideel tid pr. enhed (samme tidsenhed).
     total_count: producerede enheder. good_count: gode enheder.
+
+    Guard: hvis stilstand ≥ planlagt tid er køretiden nul eller negativ, og
+    tilgængelighed/ydelse/OEE giver ikke mening — der returneres NaN i stedet
+    for stille forkerte (positive) tal.
     """
     run_time = planned_time - downtime
-    availability = run_time / planned_time if planned_time else float("nan")
-    performance = (ideal_cycle_time * total_count) / run_time if run_time else float("nan")
+    availability = run_time / planned_time if planned_time > 0 and run_time >= 0 else float("nan")
+    performance = (ideal_cycle_time * total_count) / run_time if run_time > 0 else float("nan")
     quality = good_count / total_count if total_count else float("nan")
     return {
         "tilgaengelighed": availability,
@@ -123,6 +127,34 @@ def theoretical_min_stations(task_times: list[float], takt: float) -> int:
     """Min. antal stationer = loft(Σ opgavetider / takt time)."""
     total = sum(task_times)
     return math.ceil(total / takt) if takt else 0
+
+
+def assign_stations(task_times: list[float], takt: float) -> list[int]:
+    """Grådig heuristik: fordel opgaver på stationer op til takt time.
+
+    Opgaverne gennemgås i den givne rækkefølge (præcedensrækkefølgen); den
+    nuværende station fyldes op, så længe stationstiden kan holde sig inden
+    for takt — ellers åbnes en ny station. En enkelt opgave der i sig selv
+    overstiger takt får sin egen station.
+
+    Returnerer stationsnumre (1, 2, 3, ...) i samme rækkefølge som opgaverne.
+    Bemærk: dette er en HEURISTIK — den garanterer ikke den optimale løsning
+    og tjekker ikke præcedenskrav ud over rækkefølgen.
+    """
+    if not task_times:
+        return []
+    if not takt or takt != takt or takt <= 0:  # 0/NaN/negativ takt: én station pr. opgave
+        return list(range(1, len(task_times) + 1))
+    stationer: list[int] = []
+    nr, brugt = 1, 0.0
+    for t in task_times:
+        t = t or 0.0
+        if brugt > 0 and brugt + t > takt + 1e-9:
+            nr += 1
+            brugt = 0.0
+        stationer.append(nr)
+        brugt += t
+    return stationer
 
 
 def line_balance(station_times: list[float]) -> dict:
@@ -257,12 +289,16 @@ def perfect_order_direct(total: float, fejlordrer: float) -> float:
 # ---------------------------------------------------------------------------
 
 def mrp_item(gross: list[float], scheduled: list[float], on_hand: float,
-             lead_time: int, lot_size: float, weeks: int) -> dict:
+             lead_time: int, lot_size: float, weeks: int,
+             lot_mode: str = "min") -> dict:
     """Tidsfaset MRP for ÉN komponent.
 
     PEI_t = PEI_(t−1) + scheduled + planned_receipt − gross.
     Net_t = gross − scheduled − PEI_(t−1) (kun positiv).
-    Planned receipt = maks(net, lotstørrelse); lot_size=0 betyder lot-for-lot.
+    lot_mode styrer hvordan lotstørrelsen bruges:
+        "min"      → planned receipt = maks(net, lot)  (lot som MINIMUMSORDRE)
+        "multipla" → planned receipt = loft(net/lot)·lot  (FOQ: multipla af lot)
+    lot_size=0 betyder lot-for-lot uanset lot_mode.
     Planned orders = planned receipts forskudt LT uger tilbage.
     """
     pei = [0.0] * weeks
@@ -278,7 +314,13 @@ def mrp_item(gross: list[float], scheduled: list[float], on_hand: float,
             prec[t] = 0.0
         else:
             net[t] = gross[t] - avail
-            prec[t] = max(net[t], lot_size) if lot_size > 0 else net[t]
+            if lot_size > 0:
+                if lot_mode == "multipla":
+                    prec[t] = math.ceil(net[t] / lot_size) * lot_size
+                else:
+                    prec[t] = max(net[t], lot_size)
+            else:
+                prec[t] = net[t]
         pei[t] = avail + prec[t] - gross[t]
         prev = pei[t]
         if prec[t] > 0:
@@ -300,12 +342,14 @@ def _mrp_level(name, parent_of):
     return lvl
 
 
-def mrp_explode(rows: list[dict], demand: list[float], weeks: int) -> dict:
+def mrp_explode(rows: list[dict], demand: list[float], weeks: int,
+                lot_mode: str = "min") -> dict:
     """Multi-niveau MRP (BOM-eksplosion).
 
     rows: liste af {navn, foraelder, antal, ledetid, lot, lager}.
     Slutproduktet har tom forælder og får demand som bruttobehov. Børn får
     bruttobehov = forælderens planned orders × antal pr. styk.
+    lot_mode sendes videre til mrp_item ("min" eller "multipla").
     """
     parent_of = {r["navn"]: (r.get("foraelder") or None) for r in rows}
     rows_sorted = sorted(rows, key=lambda r: _mrp_level(r["navn"], parent_of))
@@ -320,7 +364,8 @@ def mrp_explode(rows: list[dict], demand: list[float], weeks: int) -> dict:
         else:
             gross = [0.0] * weeks
         results[r["navn"]] = mrp_item(gross, [0.0] * weeks, r["lager"],
-                                      int(r["ledetid"]), r["lot"], weeks)
+                                      int(r["ledetid"]), r["lot"], weeks,
+                                      lot_mode=lot_mode)
     return {"items": results, "raekkefoelge": [r["navn"] for r in rows_sorted]}
 
 
@@ -330,16 +375,25 @@ def mrp_explode(rows: list[dict], demand: list[float], weeks: int) -> dict:
 
 def sop_plan(forecast: list[float], timer_pr_enhed: float, timer_pr_md: float,
              startlager: float, start_arbejdere: float, hyreomk: float,
-             fyreomk: float, lageromk: float, strategi: str) -> dict:
+             fyreomk: float, lageromk: float, strategi: str,
+             restordreomk: float | None = None) -> dict:
     """Aggregeret produktionsplan efter Level- eller Chase-strategi.
 
     Level: konstant arbejdsstyrke (årsgennemsnit), lager svinger.
     Chase: arbejdsstyrke følger efterspørgslen (rundes op), lager ~konstant.
+
+    lageromk gælder kun POSITIVT slutlager. Negativt slutlager er restordre
+    (manglende levering) og prissættes med restordreomk pr. enhed/md.
+    restordreomk=None falder tilbage til lageromk (bagudkompatibelt).
     """
     n = len(forecast)
+    if restordreomk is None:
+        restordreomk = lageromk
     workers_req = [f * timer_pr_enhed / timer_pr_md for f in forecast]
     if strategi == "Level":
-        w = round(sum(workers_req) / n) if n else 0
+        # round-half-up i stedet for round() (banker's rounding runder 12,5 NED
+        # til 12 og ville underbemande planen)
+        w = math.floor(sum(workers_req) / n + 0.5) if n else 0
         workers = [w] * n
     else:  # Chase
         workers = [math.ceil(x) for x in workers_req]
@@ -361,12 +415,16 @@ def sop_plan(forecast: list[float], timer_pr_enhed: float, timer_pr_md: float,
 
     hyre_total = sum(hires) * hyreomk
     fyre_total = sum(layoffs) * fyreomk
-    lager_total = sum(abs(e) for e in ending) * lageromk
+    # lager og restordre holdes adskilt: positivt slutlager koster lageromk,
+    # negativt slutlager er restordre og koster restordreomk
+    lager_total = sum(e for e in ending if e > 0) * lageromk
+    restordre_total = sum(-e for e in ending if e < 0) * restordreomk
     return {
         "workers": workers, "production": production, "hires": hires,
         "layoffs": layoffs, "ending": ending,
-        "hyre_total": hyre_total, "fyre_total": fyre_total, "lager_total": lager_total,
-        "total": hyre_total + fyre_total + lager_total,
+        "hyre_total": hyre_total, "fyre_total": fyre_total,
+        "lager_total": lager_total, "restordre_total": restordre_total,
+        "total": hyre_total + fyre_total + lager_total + restordre_total,
     }
 
 

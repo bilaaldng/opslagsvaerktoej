@@ -1105,5 +1105,148 @@ KONCEPT = [
    "dækningsbidrag",
    "sikkerhedsmargin"
   ]
+ },
+ {
+  "fag": "Jura",
+  "emne": "CISG — købers mangelbeføjelser",
+  "sp": "En vare fra en udenlandsk leverandør er mangelfuld. Hvilke beføjelser har køber efter CISG, og hvad afhænger valget af?",
+  "type": "rigtigt",
+  "svar": "Når reklamationen er rettidig, giver CISG køber en trappe af beføjelser: afhjælpning (leverandøren reparerer), omlevering (ny vare — kræver at manglen er en væsentlig misligholdelse), forholdsmæssigt afslag i prisen, erstatning for tabet, og ved væsentlig misligholdelse ophævelse af købet. Valget afhænger af manglens grovhed: små mangler klares med afslag eller afhjælpning, mens ophævelse og omlevering kræver, at manglen i det væsentlige berøver køber det, han med rimelighed kunne forvente (væsentlighedskravet i art. 25). Erstatning kan kombineres med de øvrige og dækker det påregnelige tab. Pointen til eksamen: nævn flere beføjelser, og begrund hvorfor netop den valgte passer til, hvor grov manglen er.",
+  "alt": "",
+  "fisker": "Eksaminator vil høre, at du kender trappen af beføjelser OG ved at ophævelse/omlevering kræver væsentlig misligholdelse, mens afslag og afhjælpning kan bruges ved mindre mangler.",
+  "soeg": [
+   "cisg",
+   "beføjelser",
+   "afhjælpning",
+   "omlevering",
+   "ophævelse",
+   "erstatning",
+   "væsentlig misligholdelse"
+  ]
+ },
+ {
+  "fag": "Jura",
+  "emne": "Reklamationsfrister (CISG art. 38-39)",
+  "sp": "Hvornår skal en køber reklamere over en mangel efter CISG, og hvad er forskellen på 'rimelig tid' og 2-års-fristen?",
+  "type": "rigtigt",
+  "svar": "CISG har to frister, der begge skal overholdes. Først undersøgelsespligten (art. 38): køber skal undersøge varen så hurtigt, omstændighederne tillader — for skjulte mangler først når de kan opdages, fx ved forarbejdning. Derefter den relative frist (art. 39, stk. 1): der skal reklameres 'inden rimelig tid' efter, at manglen blev eller burde være opdaget, og reklamationen skal angive manglens art. Oveni ligger den absolutte frist (art. 39, stk. 2): uanset alt mister køber kravet, hvis der ikke er reklameret senest 2 år efter, at varen faktisk blev overgivet — medmindre sælger har givet en garanti, der rækker længere. Så 'rimelig tid' er den bevægelige frist fra opdagelsen, mens 2-års-fristen er en hård bagkant regnet fra leveringen.",
+  "alt": "",
+  "fisker": "Eksaminator vil høre, at du kan skille de to frister ad: 'rimelig tid' løber fra opdagelsen (art. 39,1), 2-års-fristen er absolut og løber fra leveringen (art. 39,2).",
+  "soeg": [
+   "reklamation",
+   "rimelig tid",
+   "2-års-frist",
+   "art 38",
+   "art 39",
+   "undersøgelsespligt",
+   "cisg"
+  ]
+ },
+ {
+  "fag": "Jura",
+  "emne": "Risikoovergang pr. Incoterm-familie",
+  "sp": "Hvordan hænger de fire Incoterm-familier (E, F, C, D) sammen med, hvornår risikoen går over fra sælger til køber?",
+  "type": "rigtigt",
+  "svar": "Incoterms 2020 er delt i fire familier efter hvor langt sælgers ansvar rækker. E-gruppen (EXW) er sælgers mindste ansvar: risikoen går over allerede på sælgers eget lager. F-gruppen (fx FOB) — risikoen går over når varen er leveret til transportøren/om bord i afskibningshavnen; køber betaler hovedtransporten. C-gruppen (fx CIF) — her er fælden: sælger BETALER fragt (og ved CIF forsikring) til ankomsthavnen, men RISIKOEN går alligevel over allerede ved lastningen. Omkostninger og risiko følges altså ikke ad. D-gruppen (DAP/DDP) er sælgers største ansvar: risikoen går først over ved destinationen; ved DDP betaler sælger også told og importafgifter. Reglen at huske: jo længere hen i alfabetet (E→F→C→D), jo mere ansvar og risiko bærer sælger — bortset fra C-gruppens split mellem omkostning og risiko.",
+  "alt": "",
+  "fisker": "Eksaminator vil særligt teste C-gruppen: at sælger betaler fragt/forsikring til ankomst, men risikoen alligevel er købers fra lastningen. Kan du forklare det split, har du forstået Incoterms.",
+  "soeg": [
+   "incoterms",
+   "risikoovergang",
+   "exw",
+   "fob",
+   "cif",
+   "ddp",
+   "e f c d gruppe"
+  ]
+ },
+ {
+  "fag": "Jura",
+  "emne": "Vedtagelse af standardvilkår",
+  "sp": "En sælgers standardbetingelser stod på bagsiden af fakturaen. Er de en del af aftalen?",
+  "type": "argument",
+  "svar": "Udgangspunktet er, at standardvilkår kun gælder, hvis de er VEDTAGET — altså gjort til en del af aftalen ved indgåelsen, så modparten havde rimelig mulighed for at kende dem (CISG art. 14-19 om tilbud/accept, art. 8 om fortolkning). Betingelser, der først dukker op EFTER aftalen — fx på bagsiden af en faktura, der sendes bagefter — er som udgangspunkt ikke vedtaget. Jeg vil argumentere for, at de ikke gælder: aftalen var indgået, før fakturaen kom, køber har aldrig aktivt accepteret bagsidevilkårene, og var de oven i købet på et fremmedsprog, køber ikke forstår, taler også art. 8 imod vedtagelse. Falder vedtagelsen, falder alle vilkårene på én gang (kort reklamationsfrist, ansvarsfraskrivelse, lovvalg), og CISG's egne regler gælder i stedet.",
+  "alt": "Modsat kan man argumentere for vedtagelse, hvis parterne har en fast samhandel, hvor de samme vilkår gentagne gange har været brugt og fulgt — så kan de være blevet en bindende sædvane mellem parterne (art. 9). Men det kræver, at vilkårene reelt har været en kendt og accepteret del af samhandlen, ikke bare trykt på fakturaer, ingen har læst.",
+  "fisker": "Eksaminator vil høre, at 'vedtaget' er kernebegrebet: vilkår efter aftalen (fakturabagside) er som udgangspunkt ikke vedtaget — og at du kan tage modargumentet om fast samhandel/sædvane (art. 9).",
+  "soeg": [
+   "standardvilkår",
+   "vedtagelse",
+   "faktura bagside",
+   "art 8",
+   "art 9",
+   "sædvane",
+   "fremmedsprog"
+  ]
+ },
+ {
+  "fag": "Statistik",
+  "emne": "Hypotesetest — fuldt flow",
+  "sp": "Beskriv trinene i en hypotesetest af et gennemsnit, fra hypoteser til konklusion.",
+  "type": "rigtigt",
+  "svar": "1) Opstil hypoteserne: H0 er 'ingen forskel'-påstanden (fx μ = 75), og H1 er det, du vil vise (μ > 75 giver en ensidet højre-test; μ ≠ 75 giver en tosidet). 2) Vælg signifikansniveau α (typisk 5 %). 3) Beregn teststørrelsen: z = (x̄ − μ0)/(σ/√n) hvis σ er kendt eller n er stor, ellers en t-test med s. 4) Find den kritiske værdi (fx 1,645 ved 5 % ensidet) eller p-værdien. 5) Konklusion I ORD: er teststørrelsen forbi den kritiske værdi — eller p < α — forkastes H0. Fx 'z = 2,15 > 1,645 og p = 0,016 < 0,05, så gennemsnittet er signifikant over 75'. Kan H0 ikke forkastes, er der ikke belæg for forskellen — den kan skyldes tilfældig variation. Pointen: retningen på H1 (ensidet/tosidet) skal følge spørgsmålet, ikke dine tal.",
+  "alt": "",
+  "fisker": "Eksaminator vil høre hele kæden — især at H1 sættes ud fra spørgsmålet (ensidet vs tosidet) FØR du ser tallene, og at konklusionen formuleres i ord med både teststørrelse og p-værdi.",
+  "soeg": [
+   "hypotesetest",
+   "h0",
+   "h1",
+   "teststørrelse",
+   "p-værdi",
+   "signifikansniveau",
+   "ensidet",
+   "tosidet"
+  ]
+ },
+ {
+  "fag": "Statistik",
+  "emne": "p-værdiens betydning",
+  "sp": "En test giver p = 0,03. Betyder det, at der er 3 % sandsynlighed for, at H0 er sand?",
+  "type": "rigtigt",
+  "svar": "Nej — det er den klassiske fejl. p-værdien er sandsynligheden for at se vores data (eller noget endnu mere ekstremt) HVIS H0 er sand. Den siger IKKE noget om sandsynligheden for, at H0 selv er sand — H0 er enten sand eller falsk, det er ikke et lykkehjul. Den korrekte fortolkning af p = 0,03: hvis der i virkeligheden ingen forskel var (H0 sand), ville vi kun se et resultat så ekstremt som vores 3 % af gangene. Da 0,03 < 0,05, er det usandsynligt nok til, at vi forkaster H0 på 5 %-niveau. En lille p-værdi betyder altså 'data passer dårligt med H0', ikke 'H0 er 3 % sandsynlig'.",
+  "alt": "",
+  "fisker": "Eksaminator elsker at teste netop denne fælde: p-værdien er P(data givet H0), ikke P(H0 givet data). Kan du sige det rigtigt, viser du reel forståelse.",
+  "soeg": [
+   "p-værdi",
+   "fortolkning",
+   "h0",
+   "signifikans",
+   "fælde",
+   "betinget sandsynlighed"
+  ]
+ },
+ {
+  "fag": "Statistik",
+  "emne": "Type I- og type II-fejl",
+  "sp": "Hvad er forskellen på en type I- og en type II-fejl, og hvordan hænger de sammen med signifikansniveauet?",
+  "type": "rigtigt",
+  "svar": "En type I-fejl er at forkaste en sand H0 — altså 'falsk alarm': man råber op om en forskel, der ikke findes. Sandsynligheden for det er netop signifikansniveauet α (fx 5 %). En type II-fejl er at beholde en falsk H0 — man overser en forskel, der faktisk er der; sandsynligheden kaldes β. De to hænger sammen som en vippe: sænker man α (kræver stærkere bevis, færre falske alarmer), stiger β (man overser flere reelle forskelle), alt andet lige. I kvalitetskontrol er type I at kassere et godt parti, type II at godkende et defekt parti — og hvilken der er værst afhænger af konteksten. Den eneste måde at presse BEGGE fejl ned på er at øge stikprøvestørrelsen n.",
+  "alt": "",
+  "fisker": "Eksaminator vil høre, at α = P(type I) og at der er et trade-off mellem type I og II — samt at kun et større n sænker begge samtidig.",
+  "soeg": [
+   "type 1 fejl",
+   "type 2 fejl",
+   "alfa",
+   "beta",
+   "signifikansniveau",
+   "falsk alarm",
+   "styrke"
+  ]
+ },
+ {
+  "fag": "Økonomi",
+  "emne": "Kritiske værdier i investeringskalkulen",
+  "sp": "Hvad er en 'kritisk værdi' i en investeringskalkule, og hvorfor er de nyttige?",
+  "type": "rigtigt",
+  "svar": "En kritisk værdi er det punkt, hvor en af investeringens forudsætninger gør NPV præcis nul — grænsen mellem lønsom og ulønsom. Man kan regne flere: kritisk levetid (hvor kort må maskinen holde?), kritisk årlig indbetaling (hvor lavt må det årlige cashflow falde?), kritisk investeringsbeløb (hvor meget må anskaffelsen højst stige?) og kritisk omsætning/afsætning (hvor lavt må salget falde i år 1?). De er nyttige som følsomhedsanalyse: i stedet for kun at vide 'NPV er positiv', får man svar på 'hvor meget må virkeligheden afvige fra budgettet, før beslutningen vender?'. Ligger den kritiske værdi tæt på det forventede, er investeringen skrøbelig; er der langt ned til grænsen, er den robust. Det er præcis den type spørgsmål en eksaminator stiller: 'hvad nu hvis salget svigter?'.",
+  "alt": "",
+  "fisker": "Eksaminator vil høre, at en kritisk værdi er der hvor NPV = 0, og at pointen er FØLSOMHED — hvor meget en forudsætning må ændre sig, før investeringen ikke længere kan betale sig.",
+  "soeg": [
+   "kritisk værdi",
+   "kritisk levetid",
+   "kritisk omsætning",
+   "følsomhedsanalyse",
+   "npv nul",
+   "investering"
+  ]
  }
 ]

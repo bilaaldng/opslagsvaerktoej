@@ -1,8 +1,11 @@
 """Produktion — regnemaskiner med dynamiske grafer.
 
-Batch 1: POQ · Linjebalancering · Processkort · Knap kapacitet · Produktions-
-strategi (5 dim.) · MPS+ATP · Little's Law · OEE · Perfect Order/OTIF ·
-Udnyttelsesgrad ρ. (MRP og S&OP = batch 2.)
+Moduler: POQ · Linjebalancering · Processkort · Knap kapacitet · Produktions-
+strategi (5 dim.) · MPS+ATP · MRP · S&OP · Little's Law · OEE ·
+Perfect Order/OTIF · Udnyttelsesgrad ρ.
+Én modulvælger (st.pills, key='prod_modul') renderer kun det valgte modul —
+hurtigere end 12 st.tabs og med deep-link fra forsiden via
+st.session_state['goto_modul'].
 Notation matcher brugerens danish-produktion-skill + VIDEN §4.
 """
 import math
@@ -47,18 +50,30 @@ st.title("🏭 Produktion")
 st.caption("Regnemaskiner med live-grafer. Tast ind eller træk i skyderne, så opdateres "
            "graf og mellemregninger med det samme.")
 
-(tab_poq, tab_lb, tab_pk, tab_kk, tab_strat, tab_mps, tab_mrp, tab_sop,
- tab_ll, tab_oee, tab_po, tab_rho) = st.tabs([
+MODULER = [
     "POQ", "Linjebalancering", "Processkort", "Knap kapacitet",
     "Produktionsstrategi", "MPS + ATP", "MRP", "S&OP",
     "Little's Law", "OEE", "Perfect Order / OTIF", "Udnyttelsesgrad ρ",
-])
+]
+
+# Deep-link fra forsiden: læses FØR modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["prod_modul"] = goto
+if "prod_modul" not in st.session_state:
+    st.session_state["prod_modul"] = MODULER[0]
+
+modul = st.pills("Vælg modul", MODULER, key="prod_modul",
+                 label_visibility="collapsed",
+                 help="Vælg det værktøj du vil regne med — kun det valgte modul vises.")
+if modul is None:
+    st.info("Vælg et modul ovenfor for at komme i gang.", icon="👆")
 
 
 # ===========================================================================
 # POQ — produktionsseriestørrelse (genbrug af core.indkoeb)
 # ===========================================================================
-with tab_poq:
+if modul == "POQ":
     st.subheader("POQ — optimal produktionsseriestørrelse")
     st.caption("Til in-house produktion: lageret bygges op løbende under produktion. "
                "Forudfyldt med et eksempel. Samme model som under Indkøb.")
@@ -112,7 +127,7 @@ with tab_poq:
                               annotation_text=f"Nuværende {num(Q_cur,0)}")
             fig.update_layout(xaxis_title="Seriestørrelse Q (stk.)", yaxis_title="Omkostning (kr./år)",
                               height=430, margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.12))
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
         else:
             st.error("p skal være større end daglig efterspørgsel d.")
 
@@ -137,7 +152,7 @@ with tab_poq:
 # ===========================================================================
 # LINJEBALANCERING
 # ===========================================================================
-with tab_lb:
+if modul == "Linjebalancering":
     st.subheader("Linjebalancering")
     st.caption("Fordel opgaver på stationer. Takt time = krav; cyklustid = realiseret "
                "(den langsomste station). Effektivitet = hvor lidt tid der spildes.")
@@ -160,15 +175,39 @@ with tab_lb:
             "Tid (min)": [3.0, 1.0, 2.0, 1.5, 2.5, 1.0],
             "Station": [1, 1, 2, 2, 3, 3],
         })
-        tasks = st.data_editor(default_tasks, num_rows="dynamic", hide_index=True,
-                               use_container_width=True, key="lb_tasks", height=250)
+        # Tabellen holdes i session_state, så auto-fordel-knappen kan skrive
+        # en ny Station-kolonne tilbage (editorens key versioneres ved skrivning).
+        if "lb_df" not in st.session_state:
+            st.session_state["lb_df"] = default_tasks
+        if "lb_ver" not in st.session_state:
+            st.session_state["lb_ver"] = 0
+        tasks = st.data_editor(st.session_state["lb_df"], num_rows="dynamic",
+                               hide_index=True, width="stretch",
+                               key=f"lb_tasks_{st.session_state['lb_ver']}", height=250)
+        auto_klik = st.button("⚡ Auto-fordel opgaver", key="lb_auto",
+                              help="Fordeler opgaverne på stationer med en simpel grådig "
+                                   "heuristik: opgaverne tages i tabellens rækkefølge, og den "
+                                   "aktuelle station fyldes op til takt time, før en ny åbnes. "
+                                   "Det er et FORSLAG — ikke garanteret optimalt, og "
+                                   "præcedenskrav ud over rækkefølgen tjekkes ikke.")
 
     tasks = tasks.copy()
     tasks["Tid (min)"] = pd.to_numeric(tasks["Tid (min)"], errors="coerce")
     tasks["Station"] = pd.to_numeric(tasks["Station"], errors="coerce")
+    n_foer = len(tasks)
     tasks = tasks.dropna(subset=["Tid (min)", "Station"])
+    if len(tasks) < n_foer:
+        st.caption(f"⚠️ {n_foer - len(tasks)} række(r) ignoreret pga. manglende/ugyldige tal "
+                   "i Tid eller Station.")
     takt = pr.takt_time(avail, output)
     min_st = pr.theoretical_min_stations(tasks["Tid (min)"].tolist(), takt)
+
+    if auto_klik and not tasks.empty:
+        forslag = tasks.copy().reset_index(drop=True)
+        forslag["Station"] = pr.assign_stations(forslag["Tid (min)"].tolist(), takt)
+        st.session_state["lb_df"] = forslag
+        st.session_state["lb_ver"] += 1
+        st.rerun()
 
     if not tasks.empty:
         grp = tasks.groupby("Station")["Tid (min)"].sum().sort_index()
@@ -186,12 +225,17 @@ with tab_lb:
                           annotation_text=f"Cyklustid = {num(r['cyklustid'],2)}")
             fig.update_layout(yaxis_title="Tid pr. station (min)", height=430,
                               margin=dict(t=30, b=10), showlegend=False)
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
             st.caption("Sådan læser du grafen: hver søjle er en station og dens samlede tid. Den "
                        "stiplede takt-linje er kravet pr. stk., den prikkede cyklustids-linje er den "
                        "langsomste station. Søjler over takt-linjen kan ikke følge med efterspørgslen. "
                        "Den fremhævede søjle er flaskehalsen, som sætter tempoet.")
 
+        if r["cyklustid"] > takt + 1e-9:
+            st.warning(f"Cyklustid ({num(r['cyklustid'],2)} min) er større end takt time "
+                       f"({num(takt,2)} min) — linjen kan ikke nå det krævede output. "
+                       "Flyt opgaver væk fra flaskehals-stationen eller tilføj en station.",
+                       icon="⚠️")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Takt time", f"{num(takt,2)} min", help="Tilgængelig tid / krævet output. Kravet pr. stk.")
         m2.metric("Min. stationer (teoretisk)", num(min_st, 0), help="loft(Σ opgavetider / takt time).")
@@ -216,7 +260,7 @@ with tab_lb:
 # ===========================================================================
 # PROCESSKORT
 # ===========================================================================
-with tab_pk:
+if modul == "Processkort":
     st.subheader("Processkort — værdigivende analyse")
     st.caption("Mærk hvert trin som V (værdigivende) eller IV (ikke-værdigivende). "
                "Mål: minimér IV-tid (transport, ventetid, inspektion, lager).")
@@ -231,13 +275,16 @@ with tab_pk:
                "(fx bearbejdning, montage). Vælg IV hvis det ikke gør (transport, ventetid, "
                "inspektion, lager) og helst skal reduceres.")
     steps_df = st.data_editor(
-        default_steps, num_rows="dynamic", hide_index=True, use_container_width=True,
+        default_steps, num_rows="dynamic", hide_index=True, width="stretch",
         key="pk_steps",
         column_config={"Type": st.column_config.SelectboxColumn("Type", options=["V", "IV"])})
 
     steps_df = steps_df.copy()
     steps_df["Tid (min)"] = pd.to_numeric(steps_df["Tid (min)"], errors="coerce")
+    n_foer = len(steps_df)
     steps_df = steps_df.dropna(subset=["Tid (min)"])
+    if len(steps_df) < n_foer:
+        st.caption(f"⚠️ {n_foer - len(steps_df)} række(r) ignoreret pga. manglende/ugyldig tid.")
     steps = [{"tid": t, "type": ty} for t, ty in zip(steps_df["Tid (min)"], steps_df["Type"])]
     r = pr.processkort(steps)
 
@@ -250,7 +297,7 @@ with tab_pk:
                              marker_color=C_OPT, text=[num(r["ikke_vaerdigivende_tid"], 1)], textposition="inside"))
         fig.update_layout(barmode="stack", yaxis_title="Tid (min)", height=380,
                           margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.15))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
     with c2:
         fig2 = go.Figure(go.Pie(values=[r["vaerdigivende_tid"], r["ikke_vaerdigivende_tid"]],
                                 labels=["V", "IV"], hole=0.6,
@@ -258,7 +305,7 @@ with tab_pk:
         fig2.update_layout(height=380, margin=dict(t=30, b=10),
                            annotations=[dict(text=pct(r["vaerdigivende_pct"]), x=0.5, y=0.5,
                                              font_size=20, showarrow=False, font_color="#e2e8f0")])
-        st.plotly_chart(style_fig(fig2), use_container_width=True)
+        st.plotly_chart(style_fig(fig2), width="stretch")
     st.caption("Tallet i midten af cirklen er den værdigivende andel (V) af den samlede tid. "
                "Jo større den grønne del, jo mindre spild. Den stablede søjle til venstre viser de "
                "samme V- og IV-minutter lagt oven på hinanden.")
@@ -272,13 +319,15 @@ with tab_pk:
 # ===========================================================================
 # KNAP KAPACITET
 # ===========================================================================
-with tab_kk:
+if modul == "Knap kapacitet":
     st.subheader("Knap kapacitet — produktmix på flaskehalsen")
     st.caption("Når én ressource er flaskehals, prioritér produkter efter dækningsbidrag "
                "pr. flaskehalstime (DB/time), ikke pr. stk. Fyld op til efterspørgslen.")
 
     avail = st.number_input("Tilgængelig flaskehalstid (min.)", min_value=1.0, value=200.0,
-                            step=10.0, key="kk_avail")
+                            step=10.0, key="kk_avail",
+                            help="Den samlede tid flaskehals-ressourcen (den knappe maskine "
+                                 "eller afdeling) har til rådighed i perioden.")
     default_p = pd.DataFrame({
         "Produkt": ["A", "B", "C"],
         "DB pr. stk": [100.0, 60.0, 40.0],
@@ -289,12 +338,15 @@ with tab_kk:
                "stk. Tid pr. stk = den tid produktet bruger på flaskehals-ressourcen (ikke den samlede "
                "produktionstid). Efterspørgsel = højeste antal der kan sælges, som planen fylder op til.")
     pdf = st.data_editor(default_p, num_rows="dynamic", hide_index=True,
-                         use_container_width=True, key="kk_data")
+                         width="stretch", key="kk_data")
 
     pdf = pdf.copy()
     for c in ["DB pr. stk", "Tid pr. stk (min)", "Efterspørgsel"]:
         pdf[c] = pd.to_numeric(pdf[c], errors="coerce")
+    n_foer = len(pdf)
     pdf = pdf.dropna()
+    if len(pdf) < n_foer:
+        st.caption(f"⚠️ {n_foer - len(pdf)} række(r) ignoreret pga. manglende/ugyldige tal.")
     produkter = [{"navn": r["Produkt"], "db_stk": r["DB pr. stk"],
                   "tid_pr_stk": r["Tid pr. stk (min)"], "efterspoergsel": r["Efterspørgsel"]}
                  for _, r in pdf.iterrows()]
@@ -307,7 +359,7 @@ with tab_kk:
             marker_color=C_TOTAL, text=[num(it["db_pr_time"], 1) for it in plan], textposition="outside"))
         fig.update_layout(yaxis_title="DB pr. flaskehalstime (kr./min)", height=360,
                           margin=dict(t=30, b=10), xaxis_title="Produkt (prioriteret rækkefølge)")
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption("Sådan læser du grafen: jo højere søjle, jo mere tjener produktet pr. minut på "
                    "flaskehalsen. Produkterne står fra venstre i den rækkefølge de bør produceres, "
                    "og planen fylder op til efterspørgslen, indtil tiden er brugt.")
@@ -319,7 +371,7 @@ with tab_kk:
             "Tid brugt (min)": num(it["tid_brugt"], 0),
             "DB i alt": kr(it["db_i_alt"], 0),
         } for it in plan])
-        st.dataframe(tab, hide_index=True, use_container_width=True)
+        st.dataframe(tab, hide_index=True, width="stretch")
         m1, m2 = st.columns(2)
         m1.metric("Samlet dækningsbidrag", kr(res["samlet_db"], 0), help="Summen af DB for det valgte produktmix.")
         m2.metric("Uudnyttet flaskehalstid", f"{num(res['uudnyttet_tid'],0)} min",
@@ -338,7 +390,7 @@ with tab_kk:
 # ===========================================================================
 # PRODUKTIONSSTRATEGI (5 dimensioner) — opslag
 # ===========================================================================
-with tab_strat:
+if modul == "Produktionsstrategi":
     st.subheader("Produktionsstrategi — de 5 dimensioner")
     st.caption("Den kvalitative analyseramme til 'foreslå en ny produktionsstrategi'. "
                "Gennemgå hver dimension og vælg den der passer til produkttype, volumen og variation.")
@@ -378,12 +430,14 @@ with tab_strat:
 # ===========================================================================
 # MPS + ATP
 # ===========================================================================
-with tab_mps:
+if modul == "MPS + ATP":
     st.subheader("MPS + ATP — Master Production Schedule")
     st.caption("Projected ending inventory (PEI) og Available-to-Promise (ATP) uge for uge. "
                "Negativ PEI = du mangler dækning og skal planlægge produktion.")
 
-    start_inv = st.number_input("Startlager (stk.)", min_value=0.0, value=50.0, step=10.0, key="mps_start")
+    start_inv = st.number_input("Startlager (stk.)", min_value=0.0, value=50.0, step=10.0, key="mps_start",
+                                help="Antal færdige varer på lager ved planens start. Tælles med i "
+                                     "uge 1's slutlager og ATP.")
     default_mps = pd.DataFrame({
         "Uge": [1, 2, 3, 4, 5, 6],
         "Forecast": [30, 30, 30, 40, 40, 40],
@@ -393,7 +447,7 @@ with tab_mps:
     st.caption("Kolonner: Forecast = forventet salg i ugen. Bookede ordrer = salg kunder allerede "
                "har bestilt. MPS = den mængde I planlægger at producere/færdiggøre i ugen.")
     mdf = st.data_editor(default_mps, num_rows="dynamic", hide_index=True,
-                         use_container_width=True, key="mps_data")
+                         width="stretch", key="mps_data")
 
     mdf = mdf.copy()
     for c in ["Forecast", "Bookede ordrer", "MPS (produktion)"]:
@@ -401,7 +455,10 @@ with tab_mps:
     forecast = mdf["Forecast"].tolist()
     booked = mdf["Bookede ordrer"].tolist()
     mps = mdf["MPS (produktion)"].tolist()
-    uger = mdf["Uge"].tolist()
+    # Uge-kolonnen kan indeholde tekst/tomme felter i nye rækker: gør den til tal,
+    # og udfyld manglende med rækkens position, så graf og advarsler ikke vælter.
+    uger_raw = pd.to_numeric(mdf["Uge"], errors="coerce").tolist()
+    uger = [int(u) if u == u else pos for pos, u in enumerate(uger_raw, start=1)]
 
     if forecast:
         res = pr.mps_atp(forecast, booked, mps, start_inv)
@@ -414,7 +471,7 @@ with tab_mps:
         fig.add_hline(y=0, line_dash="dash", line_color=C_OPT)
         fig.update_layout(xaxis_title="Uge", yaxis_title="Projected ending inventory (stk.)",
                           height=380, margin=dict(t=30, b=10), showlegend=False)
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption("Sådan læser du grafen: linjen er det forventede slutlager hver uge. Punkter under "
                    "den stiplede nul-linje (markeret med anden farve) betyder, at lageret ikke rækker, "
                    "og at du skal planlægge produktion tidligere.")
@@ -427,10 +484,15 @@ with tab_mps:
             "PEI": [num(x, 0) for x in pei],
             "ATP": [num(a, 0) if a is not None else "—" for a in atp],
         })
-        st.dataframe(out, hide_index=True, use_container_width=True)
+        st.dataframe(out, hide_index=True, width="stretch")
         if any(v < 0 for v in pei):
             uger_neg = [int(u) for u, v in zip(uger, pei) if v < 0]
             st.warning(f"Negativ PEI i uge {uger_neg} — planlæg produktion (MPS) tidligere.", icon="⚠️")
+        uger_atp_neg = [int(u) for u, a in zip(uger, atp) if a is not None and a < 0]
+        if uger_atp_neg:
+            st.warning(f"Negativ ATP i uge {uger_atp_neg} — du har lovet kunderne flere varer, end "
+                       "produktionen kan levere frem til næste MPS-uge. Flyt/forøg MPS eller lov "
+                       "senere levering.", icon="⚠️")
         with st.expander("Mellemregninger / formel", expanded=True):
             st.markdown(
                 "- **PEI** = forrige lager + denne uges MPS − **MAX**(forecast, bookede ordrer). "
@@ -444,7 +506,7 @@ with tab_mps:
 # ===========================================================================
 # LITTLE'S LAW
 # ===========================================================================
-with tab_ll:
+if modul == "Little's Law":
     st.subheader("Little's Law")
     st.caption("WIP = gennemløbshastighed (R) × gennemløbstid (T). Løs for den størrelse du mangler.")
 
@@ -479,7 +541,7 @@ with tab_ll:
 # ===========================================================================
 # OEE
 # ===========================================================================
-with tab_oee:
+if modul == "OEE":
     st.subheader("OEE — Overall Equipment Effectiveness")
     st.caption("OEE = tilgængelighed × ydelse × kvalitet.")
     st.info("OEE er en industristandard og indgår ikke direkte i jeres pensum/eksamen — "
@@ -500,19 +562,31 @@ with tab_oee:
 
     r = pr.oee(planned, downtime, ideal, total, good)
     with h:
-        fig = go.Figure(go.Bar(
-            x=["Tilgængelighed", "Ydelse", "Kvalitet", "OEE"],
-            y=[r["tilgaengelighed"], r["ydelse"], r["kvalitet"], r["OEE"]],
-            marker_color=[C_TOTAL, C_ORDER, C_HOLD, C_OPT],
-            text=[pct(r["tilgaengelighed"]), pct(r["ydelse"]), pct(r["kvalitet"]), pct(r["OEE"])],
-            textposition="outside"))
-        fig.update_layout(yaxis_title="Andel", yaxis=dict(range=[0, 1.1], tickformat=".0%"),
-                          height=400, margin=dict(t=30, b=10))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
-        st.caption("Sådan læser du grafen: de tre første søjler er hver sin tabskilde (tid, tempo, "
-                   "kvalitet). OEE yderst er dem ganget sammen og derfor altid lavere end hver enkelt; "
-                   "den viser den samlede effektivitet.")
+        if r["koeretid"] <= 0:
+            st.error("Stilstanden er lig med eller større end den planlagte tid — der er ingen "
+                     "køretid tilbage, så tilgængelighed, ydelse og OEE kan ikke beregnes. "
+                     "Sænk stilstanden eller øg den planlagte tid.", icon="⚠️")
+        else:
+            fig = go.Figure(go.Bar(
+                x=["Tilgængelighed", "Ydelse", "Kvalitet", "OEE"],
+                y=[r["tilgaengelighed"], r["ydelse"], r["kvalitet"], r["OEE"]],
+                marker_color=[C_TOTAL, C_ORDER, C_HOLD, C_OPT],
+                text=[pct(r["tilgaengelighed"]), pct(r["ydelse"]), pct(r["kvalitet"]), pct(r["OEE"])],
+                textposition="outside"))
+            fig.update_layout(yaxis_title="Andel", yaxis=dict(range=[0, 1.1], tickformat=".0%"),
+                              height=400, margin=dict(t=30, b=10))
+            st.plotly_chart(style_fig(fig), width="stretch")
+            st.caption("Sådan læser du grafen: de tre første søjler er hver sin tabskilde (tid, tempo, "
+                       "kvalitet). OEE yderst er dem ganget sammen og derfor altid lavere end hver enkelt; "
+                       "den viser den samlede effektivitet.")
 
+    if good > total:
+        st.error("Gode enheder kan ikke overstige producerede enheder — kvaliteten ville blive over "
+                 "100 %. Ret et af de to tal.", icon="⚠️")
+    if r["ydelse"] == r["ydelse"] and r["ydelse"] > 1:
+        st.warning("Ydelsen er over 100 %: der er produceret flere enheder, end den ideelle "
+                   "cyklustid tillader i køretiden. Tjek ideel cyklustid, producerede enheder "
+                   "og stilstand.", icon="⚠️")
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Tilgængelighed", pct(r["tilgaengelighed"]), help="Køretid / planlagt tid.")
     m2.metric("Ydelse", pct(r["ydelse"]), help="(Ideel cyklustid × producerede) / køretid.")
@@ -523,7 +597,7 @@ with tab_oee:
 # ===========================================================================
 # PERFECT ORDER / OTIF
 # ===========================================================================
-with tab_po:
+if modul == "Perfect Order / OTIF":
     st.subheader("Perfect Order / OTIF")
     st.caption("Andel ordrer leveret korrekt: til tiden, komplet, ubeskadiget og korrekt faktureret.")
 
@@ -547,25 +621,33 @@ with tab_po:
             text=[pct(v) for v in [komp["til_tiden"], komp["komplet"], komp["ubeskadiget"], komp["korrekt_faktura"], po_rate]],
             textposition="outside"))
         fig.update_layout(yaxis=dict(range=[0, 1.1], tickformat=".0%"), height=380, margin=dict(t=30, b=10))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.metric("Perfect Order", pct(po_rate),
                   help="Produkt af de fire delrater (antager uafhængighed).")
         st.caption("Perfect Order = til tiden × komplet × ubeskadiget × korrekt faktura "
                    f"= {pct(po_rate)}. De fire fejlkilder ganges sammen.")
     else:
         c = st.columns(2)
-        total = c[0].number_input("Antal ordrer i alt", min_value=1.0, value=100.0, step=10.0, key="po_total")
-        fejl = c[1].number_input("Ordrer med mindst én fejl", min_value=0.0, value=12.0, step=1.0, key="po_fejl")
-        rate = pr.perfect_order_direct(total, fejl)
-        st.metric("Perfect Order", pct(rate),
-                  help="(Total − ordrer med fejl) / total.")
-        st.caption(f"Perfect Order = ({num(total,0)} − {num(fejl,0)}) / {num(total,0)} = {pct(rate)}.")
+        total = c[0].number_input("Antal ordrer i alt", min_value=1.0, value=100.0, step=10.0, key="po_total",
+                                  help="Det samlede antal ordrer i den periode du måler på.")
+        fejl = c[1].number_input("Ordrer med mindst én fejl", min_value=0.0, value=12.0, step=1.0, key="po_fejl",
+                                 help="Antal ordrer hvor bare én ting gik galt (forsinket, mangler, "
+                                      "beskadiget eller forkert faktura). Kan højst være lig antal "
+                                      "ordrer i alt.")
+        if fejl > total:
+            st.error("Ordrer med fejl kan ikke overstige antal ordrer i alt — Perfect Order-raten "
+                     "ville blive negativ. Ret et af de to tal.", icon="⚠️")
+        else:
+            rate = pr.perfect_order_direct(total, fejl)
+            st.metric("Perfect Order", pct(rate),
+                      help="(Total − ordrer med fejl) / total.")
+            st.caption(f"Perfect Order = ({num(total,0)} − {num(fejl,0)}) / {num(total,0)} = {pct(rate)}.")
 
 
 # ===========================================================================
 # UDNYTTELSESGRAD ρ
 # ===========================================================================
-with tab_rho:
+if modul == "Udnyttelsesgrad ρ":
     st.subheader("Udnyttelsesgrad ρ = λ/μ")
     st.caption("Hvor hårdt en ressource belastes. Jo tættere på 100 %, jo længere ventetid "
                "(kø) — ventetiden eksploderer når ρ nærmer sig 1.")
@@ -588,7 +670,7 @@ with tab_rho:
                                      text=[f"ρ = {pct(r['rho'])}"], textposition="top center", name="Valgt"))
         fig.update_layout(xaxis_title="Udnyttelsesgrad ρ (%)", yaxis_title="Ventetid i kø Tw (tid)",
                           height=400, margin=dict(t=30, b=10), showlegend=False)
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption("Sådan læser du grafen: kurven viser ventetiden i kø ved forskellige "
                    "udnyttelsesgrader. Den markerede prik er jeres nuværende ρ (udnyttelsesgrad). "
                    "Jo længere mod højre (tæt på 100 %), jo stejlere stiger ventetiden, derfor undgår "
@@ -607,18 +689,32 @@ with tab_rho:
 # ===========================================================================
 # MRP (BOM-eksplosion)
 # ===========================================================================
-with tab_mrp:
+if modul == "MRP":
     st.subheader("MRP — materialebehovsplanlægning")
     st.caption("Fra slutproduktets behov ned gennem styklisten (BOM). Hver komponents "
                "planlagte ordreafgivelser bliver til børnenes bruttobehov, forskudt med ledetiden.")
 
-    WEEKS = 8
+    ci1, ci2 = st.columns([1, 2])
+    WEEKS = int(ci1.number_input("Horisont (uger)", min_value=4, max_value=16, value=8,
+                                 step=1, key="mrp_weeks",
+                                 help="Hvor mange uger planen dækker. Udvid horisonten, hvis lange "
+                                      "ledetider giver advarslen 'skulle være afgivet før uge 1'."))
+    lot_valg = ci2.radio(
+        "Lotstørrelse bruges som", ["Minimumsordre", "Multipla af lot"],
+        horizontal=True, key="mrp_lotmode",
+        help="Minimumsordre: der bestilles mindst lotstørrelsen, ellers præcis behovet "
+             "(behov 120, lot 50 → 120). Multipla af lot: der bestilles altid i hele "
+             "lotstørrelser (behov 120, lot 50 → 150, altså 3 × 50). Tjek hvilken "
+             "konvention jeres kursusmateriale bruger. Lot 0 er altid lot-for-lot.")
+    lot_mode = "multipla" if lot_valg == "Multipla af lot" else "min"
     uger = list(range(1, WEEKS + 1))
 
     st.markdown("**Bruttobehov for slutproduktet** (pr. uge):")
-    default_d = pd.DataFrame({"Uge": uger, "Behov": [0, 0, 0, 0, 0, 0, 0, 100]})
-    ddf = st.data_editor(default_d, hide_index=True, use_container_width=True, key="mrp_demand",
-                         disabled=["Uge"], height=150)
+    behov_default = [0] * WEEKS
+    behov_default[-1] = 100
+    default_d = pd.DataFrame({"Uge": uger, "Behov": behov_default})
+    ddf = st.data_editor(default_d, hide_index=True, width="stretch",
+                         key=f"mrp_demand_{WEEKS}", disabled=["Uge"], height=150)
     demand = pd.to_numeric(ddf["Behov"], errors="coerce").fillna(0).tolist()
     demand = (demand + [0] * WEEKS)[:WEEKS]
 
@@ -636,7 +732,7 @@ with tab_mrp:
                "bestillingen tilbage i tid). Lotstørrelse = mindste/faste bestillingsmængde "
                "(0 = bestil præcis det der mangler). Lager = nuværende beholdning.")
     bomdf = st.data_editor(default_bom, num_rows="dynamic", hide_index=True,
-                           use_container_width=True, key="mrp_bom", height=200)
+                           width="stretch", key="mrp_bom", height=200)
     bomdf = bomdf.copy()
     for c in ["Antal pr.", "Ledetid", "Lotstørrelse", "Lager"]:
         bomdf[c] = pd.to_numeric(bomdf[c], errors="coerce").fillna(0)
@@ -647,7 +743,7 @@ with tab_mrp:
              "lot": r["Lotstørrelse"], "lager": r["Lager"]} for _, r in bomdf.iterrows()]
 
     if rows:
-        res = pr.mrp_explode(rows, demand, WEEKS)
+        res = pr.mrp_explode(rows, demand, WEEKS, lot_mode=lot_mode)
         raekkefoelge = [n for n in res["raekkefoelge"] if n in res["items"]]
         rk = {"gross": "Bruttobehov", "scheduled": "Planlagte modtagelser",
               "pei": "Disponibel beholdning", "net": "Nettobehov",
@@ -662,7 +758,7 @@ with tab_mrp:
                 tab = pd.DataFrame({rk[k]: [num(v, 0) for v in it[k]] for k in rk},
                                    index=[f"Uge {u}" for u in uger]).T
                 tab.columns = [f"Uge {u}" for u in uger]
-                st.dataframe(tab, use_container_width=True)
+                st.dataframe(tab, width="stretch")
                 if it["overdue"] > 0:
                     st.warning(f"{num(it['overdue'],0)} stk. skulle være afgivet før uge 1 "
                                "(ledetiden er længere end horisonten tillader).", icon="⚠️")
@@ -678,7 +774,7 @@ with tab_mrp:
 # ===========================================================================
 # S&OP — aggregeret produktionsplan (Level vs. Chase)
 # ===========================================================================
-with tab_sop:
+if modul == "S&OP":
     st.subheader("S&OP — aggregeret produktionsplan")
     st.caption("Level holder arbejdsstyrken konstant (lageret svinger). Chase følger "
                "efterspørgslen ved at hyre/fyre (lageret holdes lavt). Sammenlign omkostningerne.")
@@ -689,20 +785,31 @@ with tab_sop:
                                  "at finde, hvor mange arbejdere efterspørgslen kræver.")
     tpm = c[1].number_input("Timer pr. md./arbejder", min_value=1.0, value=160.0, step=10.0, key="sop_tpm",
                             help="Hvor mange timer én ansat arbejder på en måned.")
-    start_inv = c[2].number_input("Startlager", value=0.0, step=50.0, key="sop_inv")
+    start_inv = c[2].number_input("Startlager", value=0.0, step=50.0, key="sop_inv",
+                                  help="Antal færdige enheder på lager når planen starter.")
     start_w = c[3].number_input("Start-arbejdsstyrke", min_value=0.0, value=12.0, step=1.0, key="sop_w",
                                 help="Antal ansatte ved planens start.")
-    c2 = st.columns(3)
-    hyre = c2[0].number_input("Hyreomkostning pr. ansat", min_value=0.0, value=5000.0, step=500.0, key="sop_hyre")
-    fyre = c2[1].number_input("Fyreomkostning pr. ansat", min_value=0.0, value=8000.0, step=500.0, key="sop_fyre")
-    lager = c2[2].number_input("Lageromkostning pr. enhed/md.", min_value=0.0, value=10.0, step=1.0, key="sop_lager")
+    c2 = st.columns(4)
+    hyre = c2[0].number_input("Hyreomkostning pr. ansat", min_value=0.0, value=5000.0, step=500.0, key="sop_hyre",
+                              help="Engangsomkostning ved at ansætte én ny medarbejder "
+                                   "(rekruttering, oplæring).")
+    fyre = c2[1].number_input("Fyreomkostning pr. ansat", min_value=0.0, value=8000.0, step=500.0, key="sop_fyre",
+                              help="Engangsomkostning ved at afskedige én medarbejder "
+                                   "(opsigelse, fratrædelsesgodtgørelse).")
+    lager = c2[2].number_input("Lageromkostning pr. enhed/md.", min_value=0.0, value=10.0, step=1.0, key="sop_lager",
+                               help="Hvad det koster at have én enhed liggende på lager i én måned "
+                                    "(rente, plads, svind). Gælder kun positivt slutlager.")
+    rest = c2[3].number_input("Restordreomkostning pr. enhed/md.", min_value=0.0, value=20.0, step=1.0, key="sop_rest",
+                              help="Straffen pr. enhed du IKKE kan levere i en måned (negativt "
+                                   "slutlager = restordre): utilfredse kunder, hastelevering, tabt "
+                                   "salg. Er typisk højere end lageromkostningen.")
 
     default_fc = pd.DataFrame({
         "Måned": ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun"],
         "Forecast": [1000, 1200, 1400, 1100, 900, 1000],
     })
     fcdf = st.data_editor(default_fc, num_rows="dynamic", hide_index=True,
-                          use_container_width=True, key="sop_fc", height=250)
+                          width="stretch", key="sop_fc", height=250)
     fcdf = fcdf.copy()
     fcdf["Forecast"] = pd.to_numeric(fcdf["Forecast"], errors="coerce").fillna(0)
     forecast = fcdf["Forecast"].tolist()
@@ -710,9 +817,18 @@ with tab_sop:
 
     if forecast:
         common = dict(timer_pr_enhed=tpe, timer_pr_md=tpm, startlager=start_inv,
-                      start_arbejdere=start_w, hyreomk=hyre, fyreomk=fyre, lageromk=lager)
+                      start_arbejdere=start_w, hyreomk=hyre, fyreomk=fyre, lageromk=lager,
+                      restordreomk=rest)
         lev = pr.sop_plan(forecast, strategi="Level", **common)
         cha = pr.sop_plan(forecast, strategi="Chase", **common)
+
+        for plan_navn, pl in (("Level", lev), ("Chase", cha)):
+            neg = [(m, -e) for m, e in zip(maaneder, pl["ending"]) if e < 0]
+            if neg:
+                mdr_txt = ", ".join(f"{m} ({num(a,0)} stk.)" for m, a in neg)
+                st.warning(f"{plan_navn}-planen kan ikke levere alt til tiden — negativt slutlager "
+                           f"(restordre) i: {mdr_txt}. Restordrerne koster i alt "
+                           f"{kr(pl['restordre_total'],0)}.", icon="⚠️")
 
         fig = go.Figure()
         fig.add_trace(go.Bar(x=maaneder, y=forecast, name="Forecast (efterspørgsel)",
@@ -723,7 +839,7 @@ with tab_sop:
                                  line=dict(color=C_ORDER, width=3, dash="dash")))
         fig.update_layout(yaxis_title="Enheder", height=380, margin=dict(t=30, b=10),
                           legend=dict(orientation="h", y=1.12))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption("Sådan læser du grafen: de grå søjler er efterspørgslen. Den flade linje (Level) "
                    "holder produktionen konstant, så lageret svinger. Den svingende, stiplede linje "
                    "(Chase) følger søjlerne tæt ved at hyre og fyre. Sammenlign med "
@@ -749,12 +865,14 @@ with tab_sop:
             "Fyringer": [num(x, 0) for x in plan["layoffs"]],
             "Slutlager": [num(x, 0) for x in plan["ending"]],
         })
-        st.dataframe(tab, hide_index=True, use_container_width=True)
+        st.dataframe(tab, hide_index=True, width="stretch")
         with st.expander("Mellemregninger / omkostninger", expanded=True):
             st.markdown(
                 f"- **{valg}**: hyre = {kr(plan['hyre_total'],0)} · fyre = {kr(plan['fyre_total'],0)} · "
-                f"lager = {kr(plan['lager_total'],0)}\n"
+                f"lager = {kr(plan['lager_total'],0)} · restordre = {kr(plan['restordre_total'],0)}\n"
                 f"- **Total = {kr(plan['total'],0)}**\n"
+                "- Lageromkostningen regnes kun af positivt slutlager; negativt slutlager er "
+                "restordrer (manglende levering) og koster restordre-satsen pr. enhed/md.\n"
                 "- Arbejdere krævet = forecast × timer pr. enhed / timer pr. md. "
-                "(Level bruger årsgennemsnittet; Chase runder op pr. måned)."
+                "(Level bruger årsgennemsnittet rundet halv-op; Chase runder op pr. måned)."
             )

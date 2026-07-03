@@ -534,5 +534,37 @@ EKSTRA_ARGUMENTER = [
    }
   ],
   "pointe": "Alle tre kan forsvares, fordi valget afhænger af om man vægter den stabile basisefterspørgsel eller de uforudsigelige hasteordrer højest. Et funktionelt produkt peger mod lean, men variabel efterspørgsel mod responsiv. Den stærke besvarelse kobler kædestrategien til produktets og efterspørgslens karakter, og kan begrunde hvorfor man lægger snittet hvor man gør, frem for at vælge en lærebogsetiket blindt."
+ },
+ {
+  "fag": "Statistik · Signifikans vs. praktisk betydning",
+  "situation": "En virksomhed har målt kundetilfredsheden i to afdelinger. En hypotesetest viser, at afdeling B ligger statistisk signifikant højere end afdeling A (p = 0,01). Men forskellen i gennemsnit er kun 1,2 point på en 100-point-skala, fordi stikprøven er meget stor (n = 5.000 i hver afdeling). Ledelsen overvejer at bruge resultatet til at omlægge arbejdsgange i afdeling A efter afdeling B's model — en dyr proces.",
+  "spm": "Bør ledelsen handle på det signifikante resultat — og hvordan vægter du statistisk signifikans mod praktisk betydning?",
+  "positioner": [
+   {
+    "navn": "Handl på det — signifikansen er reel",
+    "arg": "Resultatet er statistisk signifikant med en lav p-værdi, så forskellen er ikke tilfældig — afdeling B ER reelt bedre. Når man har et solidt datagrundlag på 5.000 målinger pr. afdeling, bør man tage det alvorligt og lære af den bedste afdeling. At ignorere et robust resultat er at lade mavefornemmelse vinde over data."
+   },
+   {
+    "navn": "Lad være — effekten er for lille til at betale sig",
+    "arg": "Statistisk signifikans betyder kun, at forskellen ikke er tilfældig — ikke at den er STOR eller vigtig. Med n = 5.000 bliver selv en ubetydelig forskel på 1,2 point signifikant. Spørgsmålet er praktisk betydning: en så lille forskel retfærdiggør næppe en dyr omlægning. Pengene gør formentlig mere gavn et andet sted."
+   }
+  ],
+  "pointe": "Begge kan forsvares, fordi signifikans og praktisk betydning er to FORSKELLIGE ting. En stor stikprøve gør små forskelle signifikante, så et lavt p alene siger ikke, om effekten er værd at handle på. Det stærke svar skiller de to ad: bekræft at forskellen er reel (signifikant), men vurdér SELVSTÆNDIGT om effektstørrelsen er stor nok til at retfærdiggøre omkostningen. Man skal se på både p-værdien OG hvor stor forskellen faktisk er."
+ },
+ {
+  "fag": "Indkøb · ESG vs. pris i leverandørvalg",
+  "situation": "En virksomhed skal vælge mellem to leverandører af en vigtig komponent. Leverandør A er 8 % billigere pr. enhed. Leverandør B er dyrere, men har markant bedre ESG-profil (dokumenteret lav CO2, ordentlige arbejdsforhold, genanvendte materialer) og lever op til kravene i det kommende CSRD-rapporteringsdirektiv. Virksomhedens egne kunder er begyndt at spørge til bæredygtighed i leverandørkæden.",
+  "spm": "Hvilken leverandør bør virksomheden vælge — og hvor meget bør ESG veje mod prisen?",
+  "positioner": [
+   {
+    "navn": "Vælg A (pris)",
+    "arg": "8 % på en vigtig komponent er en betydelig, sikker og målbar besparelse, der styrker konkurrenceevnen med det samme. ESG-fordelen ved B er sværere at omsætte til kroner, og indkøbets kerneopgave er at sikre forsyning til den rigtige pris. Man kan arbejde med bæredygtighed andre steder, hvor det koster mindre."
+   },
+   {
+    "navn": "Vælg B (ESG)",
+    "arg": "ESG er ikke længere blødt: CSRD gør leverandørkædens bæredygtighed til noget, virksomheden SKAL rapportere på, og kunderne efterspørger det aktivt. Vælger man A, risikerer man dårlig omtale, fremtidige compliance-problemer og tab af kunder — omkostninger, der let overstiger de 8 %. B er en investering i at være fremtidssikret."
+   }
+  ],
+  "pointe": "Begge kan forsvares, fordi valget afhænger af, hvor stærkt man vægter en sikker kortsigtet besparelse mod en sværere målbar, men voksende, strategisk risiko. Det stærke svar nøjes ikke med 'billigst vinder' eller 'bæredygtighed altid': det kobler til konkrete forhold — hvor prisfølsom er virksomheden, hvor reelt er kundepresset, og hvad koster et ESG-problem under CSRD? — og argumenterer konsistent ud fra dem. Total cost of ownership, ikke kun stykpris, er den rigtige ramme."
  }
 ]

@@ -9,6 +9,7 @@ punkt og hver rækkefølge er bevaret, inkl. lærerens egne emfaser ("alle 6
 punkter!!", "HUSK kun RVL", "Er der harmoni?").
 """
 import os
+import re
 import sys
 
 import streamlit as st
@@ -27,7 +28,11 @@ PAGE_OEKO = "pages/4_Økonomi.py"
 PAGE_ORG = "pages/5_Organisation.py"
 PAGE_KOMM = "pages/6_Kommunikation.py"
 
-L_IND = (PAGE_IND, "Åbn i Indkøb", "🛒")
+# Links er (sti, label, ikon) — eller (sti, label, ikon, modul) hvor modul er
+# navnet på et modul i sidens modulvælger. Med et modul sættes
+# st.session_state['goto_modul'] før st.switch_page, så man lander direkte på
+# det rigtige modul (deep-link-konventionen — Indkøb og Produktion forstår den).
+L_IND = (PAGE_IND, "Åbn i Indkøb", "🛒", "Strategi & modeller")
 L_PROD = (PAGE_PROD, "Åbn i Produktion", "🏭")
 L_STAT = (PAGE_STAT, "Åbn i Statistik", "📊")
 L_ORG = (PAGE_ORG, "Åbn i Organisation", "🧭")
@@ -54,7 +59,7 @@ BLOKKE = [
                     {
                         "navn": "Organisationsstruktur",
                         "forklar": "Hvordan ansvar og arbejde er fordelt. Tegn organisationen og "
-                                   "karaktériser den ud fra:",
+                                   "karakterisér den ud fra:",
                         "under": [
                             "**Organisationsdiagram** — tegningen af hvem der refererer til hvem.",
                             "**Funktion/objekt** — er afdelinger delt efter *funktion* (alt indkøb "
@@ -210,7 +215,7 @@ BLOKKE = [
                         "forklar": "Gøres dette — og hvordan? Måler virksomheden leverandørerne "
                                    "løbende (leveringspræcision, kvalitet, pris) med fx en vægtet "
                                    "leverandørscore?",
-                        "link": (PAGE_IND, "Leverandørscore (Indkøb)", "🛒"),
+                        "link": (PAGE_IND, "Leverandørscore (Indkøb)", "🛒", "Leverandørscore"),
                         "soeg": ["evaluering", "leverandørevaluering", "leverandørscore", "vægtet",
                                  "kriterier", "kpi"],
                     },
@@ -235,7 +240,8 @@ BLOKKE = [
                                    "(rammeaftale) — altså hvordan udløser/hjemkalder virksomheden "
                                    "varer på en allerede indgået aftale, og hvad styrer hvornår der "
                                    "bestilles.",
-                        "link": (PAGE_IND, "Genbestilling & review-systemer (Indkøb)", "🛒"),
+                        "link": (PAGE_IND, "Genbestilling & review-systemer (Indkøb)", "🛒",
+                                 "Review-systemer"),
                         "soeg": ["disponering", "materialeflow", "rammeaftale", "hjemkald", "genbestilling"],
                     },
                     {
@@ -259,7 +265,7 @@ BLOKKE = [
                         "forklar": "Styres/ledes lageret? **(HUSK: kun råvarelager, RVL)** — hvordan "
                                    "styres råvarelageret: niveauer, sikkerhedslager, hvor meget "
                                    "kapital der er bundet?",
-                        "link": (PAGE_IND, "Lagerstyring & EOQ (Indkøb)", "🛒"),
+                        "link": (PAGE_IND, "Lagerstyring & EOQ (Indkøb)", "🛒", "EOQ"),
                         "soeg": ["lager", "råvarelager", "rvl", "sikkerhedslager", "lagerstyring"],
                     },
                 ],
@@ -329,7 +335,8 @@ BLOKKE = [
                         "forklar": "Leveringsserviceniveau, ordre ind, beskæftigelse — hvordan "
                                    "håndteres kundeordrer fra de kommer ind, og hvilket serviceniveau "
                                    "lover virksomheden kunderne?",
-                        "link": (PAGE_PROD, "Perfect Order / OTIF (Produktion)", "🏭"),
+                        "link": (PAGE_PROD, "Perfect Order / OTIF (Produktion)", "🏭",
+                                 "Perfect Order / OTIF"),
                         "soeg": ["kundeordrebehandling", "leveringsservice", "ordre ind", "beskæftigelse",
                                  "serviceniveau"],
                     },
@@ -337,7 +344,8 @@ BLOKKE = [
                         "navn": "FVL — færdigvarelager",
                         "forklar": "Lagerservicegraden — hvor stor en del af kundeordrerne kan dækkes "
                                    "direkte fra færdigvarelageret uden ventetid?",
-                        "link": (PAGE_IND, "Servicegrad & sikkerhedslager (Indkøb)", "🛒"),
+                        "link": (PAGE_IND, "Servicegrad & sikkerhedslager (Indkøb)", "🛒",
+                                 "Genbestilling + SS"),
                         "soeg": ["fvl", "færdigvarelager", "lagerservicegrad", "servicegrad", "fyldningsgrad"],
                     },
                     {
@@ -364,7 +372,7 @@ BLOKKE = [
                         "forklar": "Behandles store og små kunder ens eller forskelligt? "
                                    "(differentieringsstrategi) — del kunderne (eller varerne) op efter "
                                    "betydning: A er de vigtigste, og de bør have mest opmærksomhed.",
-                        "link": (PAGE_IND, "ABC / Pareto (Indkøb)", "🛒"),
+                        "link": (PAGE_IND, "ABC / Pareto (Indkøb)", "🛒", "ABC / Pareto"),
                         "soeg": ["abc", "abc-klassificering", "pareto", "80/20", "differentiering",
                                  "store kunder", "små kunder"],
                     },
@@ -378,7 +386,8 @@ BLOKKE = [
                         "navn": "Tidselementer",
                         "forklar": "Lead time og leveringstid — leveringstiden kunden oplever vs. "
                                    "virksomhedens egen gennemløbstid internt.",
-                        "link": (PAGE_PROD, "Little's Law / gennemløbstid (Produktion)", "🏭"),
+                        "link": (PAGE_PROD, "Little's Law / gennemløbstid (Produktion)", "🏭",
+                                 "Little's Law"),
                         "soeg": ["tidselementer", "lead time", "leveringstid", "gennemløbstid", "leadtime"],
                     },
                 ],
@@ -449,6 +458,27 @@ BLOKKE = [
 
 
 # ===========================================================================
+# TJEKLISTE — flueben pr. punkt (gemmes i session_state, key-prefix vca_done_*)
+# ===========================================================================
+def _slug(s: str) -> str:
+    """Navn -> nøglevenlig slug (små bogstaver, _ i stedet for tegn/mellemrum)."""
+    return re.sub(r"[^a-z0-9æøåü]+", "_", s.lower()).strip("_")
+
+
+def _punkt_key(omr_navn: str, punkt_navn: str) -> str:
+    return f"vca_done_{_slug(omr_navn)}_{_slug(punkt_navn)}"
+
+
+ALLE_KEYS = [_punkt_key(omr["navn"], p["navn"])
+             for blok in BLOKKE for omr in blok["omr"] for p in omr["punkter"]]
+
+
+def _nulstil_tjekliste():
+    for k in ALLE_KEYS:
+        st.session_state[k] = False
+
+
+# ===========================================================================
 # RENDER
 # ===========================================================================
 st.title("🔗 Værdikædeanalyse")
@@ -484,6 +514,19 @@ with st.expander("🧭 Sådan skriver du en station — metode + eksempel"):
                "responsive konkurrencestrategi — altså manglende harmoni. Det høje lager er en "
                "svaghed, som noteres i listen af udfordringer.”")
 
+# --- Fremdrift: hvor mange punkter er krydset af? ---------------------------
+_done = sum(bool(st.session_state.get(k, False)) for k in ALLE_KEYS)
+_n = len(ALLE_KEYS)
+pcol, rcol = st.columns([5, 1], vertical_alignment="center")
+with pcol:
+    st.progress(_done / _n if _n else 0.0,
+                text=f"{_done} af {_n} punkter dækket i din rapport")
+with rcol:
+    st.button("Nulstil tjekliste", key="vca_nulstil", on_click=_nulstil_tjekliste,
+              disabled=_done == 0,
+              help="Fjerner alle flueben, fx når du starter på en ny rapport. "
+                   "Fluebenene huskes kun så længe appen er åben.")
+
 soeg = st.text_input(
     "🔍 Søg i værdikæden",
     placeholder="fx Bensaou, Ansoff, MRP, Incoterms, ABC, lager, harmoni …",
@@ -500,8 +543,12 @@ def punkt_match(p):
     return soeg in " ".join(dele).lower()
 
 
-def vis_punkt(p):
-    st.markdown(f"**{p['navn']}**")
+def vis_punkt(p, omr_navn):
+    key = _punkt_key(omr_navn, p["navn"])
+    # Punktnavnet ER afkrydsningsfeltet: sæt flueben når punktet er dækket.
+    st.checkbox(f"**{p['navn']}**", key=key,
+                help="Sæt flueben når punktet er dækket i din rapport — "
+                     "fremdriftsbjælken øverst tæller med.")
     if p.get("forklar"):
         st.markdown(p["forklar"])
     if p.get("under"):
@@ -509,8 +556,16 @@ def vis_punkt(p):
     if p.get("note"):
         st.markdown(p["note"])
     if p.get("link"):
-        sti, label, ikon = p["link"]
-        st.page_link(sti, label=label, icon=ikon)
+        link = p["link"]
+        if len(link) == 4:
+            # Deep-link: sæt goto_modul så fagsiden lander på det rigtige modul
+            sti, label, ikon, modul = link
+            if st.button(f"{ikon} {label}", key=f"vca_goto_{key}", type="tertiary"):
+                st.session_state["goto_modul"] = modul
+                st.switch_page(sti)
+        else:
+            sti, label, ikon = link
+            st.page_link(sti, label=label, icon=ikon)
 
 
 total = 0
@@ -534,7 +589,7 @@ for blok in BLOKKE:
                 st.caption(omr["intro"])
             for i, p in enumerate(pk):
                 total += 1
-                vis_punkt(p)
+                vis_punkt(p, omr["navn"])
                 if i < len(pk) - 1:
                     st.markdown("")
 

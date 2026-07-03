@@ -19,14 +19,27 @@ from scipy.optimize import brentq
 # Investeringskalkule
 # ---------------------------------------------------------------------------
 
-def npv(rate: float, cashflows: list[float]) -> float:
-    """Kapitalværdi. cashflows[0] = år 0 (typisk −startinvestering)."""
-    return float(sum(cf / (1 + rate) ** t for t, cf in enumerate(cashflows)))
+def _aar(cashflows: list[float], years: list[float] | None) -> list[float]:
+    """Årstal pr. cashflow. Uden years antages på hinanden følgende år fra 0."""
+    if years is None:
+        return [float(t) for t in range(len(cashflows))]
+    return [float(t) for t in years]
 
 
-def irr(cashflows: list[float]) -> float:
+def npv(rate: float, cashflows: list[float], years: list[float] | None = None) -> float:
+    """Kapitalværdi. cashflows[0] = år 0 (typisk −startinvestering).
+
+    years: valgfri liste med årstal pr. cashflow (samme længde), så huller i
+    årrækken diskonteres korrekt — fx years=[0, 1, 5]. Udelades den, antages
+    rækkefølgen at være år 0, 1, 2, ...
+    """
+    return float(sum(cf / (1 + rate) ** t
+                     for t, cf in zip(_aar(cashflows, years), cashflows)))
+
+
+def irr(cashflows: list[float], years: list[float] | None = None) -> float:
     """Intern rente: renten hvor NPV = 0 (første fortegnsskift fundet)."""
-    f = lambda r: npv(r, cashflows)
+    f = lambda r: npv(r, cashflows, years)
     rates = np.linspace(-0.99, 10.0, 4000)
     vals = [f(r) for r in rates]
     for i in range(len(rates) - 1):
@@ -37,39 +50,107 @@ def irr(cashflows: list[float]) -> float:
     return float("nan")
 
 
-def payback(cashflows: list[float]) -> float:
-    """Tilbagebetalingstid (år, med interpolation). cashflows[0] = år 0."""
+def payback(cashflows: list[float], years: list[float] | None = None) -> float:
+    """Tilbagebetalingstid (år, med interpolation). cashflows[0] = år 0.
+
+    Ved huller i årrækken interpoleres hen over spændet mellem to år.
+    """
+    ys = _aar(cashflows, years)
     cum = cashflows[0]
-    for t in range(1, len(cashflows)):
-        if cum + cashflows[t] >= 0:
-            return (t - 1) + (-cum) / cashflows[t] if cashflows[t] else float(t)
-        cum += cashflows[t]
+    for i in range(1, len(cashflows)):
+        if cum + cashflows[i] >= 0:
+            span = ys[i] - ys[i - 1]
+            return float(ys[i - 1] + span * (-cum) / cashflows[i]) if cashflows[i] else float(ys[i])
+        cum += cashflows[i]
     return float("nan")
 
 
-def kritisk_levetid(cashflows: list[float], rate: float) -> float:
+def kritisk_levetid(cashflows: list[float], rate: float,
+                    years: list[float] | None = None) -> float:
     """Mindste levetid (år) før investeringen er tjent hjem (NPV = 0)."""
+    ys = _aar(cashflows, years)
     investering = -cashflows[0]
     disc_cum = 0.0
-    for t in range(1, len(cashflows)):
-        d = cashflows[t] / (1 + rate) ** t
+    for i in range(1, len(cashflows)):
+        d = cashflows[i] / (1 + rate) ** ys[i]
         if disc_cum + d >= investering:
-            return (t - 1) + (investering - disc_cum) / d if d else float(t)
+            span = ys[i] - ys[i - 1]
+            return float(ys[i - 1] + span * (investering - disc_cum) / d) if d else float(ys[i])
         disc_cum += d
     return float("nan")
 
 
-def npv_profile(cashflows: list[float], rates: np.ndarray) -> np.ndarray:
+def npv_profile(cashflows: list[float], rates: np.ndarray,
+                years: list[float] | None = None) -> np.ndarray:
     """NPV ved hver rente (til NPV-profilen der krydser nul ved IRR)."""
-    return np.array([npv(r, cashflows) for r in rates])
+    return np.array([npv(r, cashflows, years) for r in rates])
 
 
-def investering_summary(cashflows: list[float], rate: float) -> dict:
+def investering_summary(cashflows: list[float], rate: float,
+                        years: list[float] | None = None) -> dict:
     return {
-        "NPV": npv(rate, cashflows),
-        "IRR": irr(cashflows),
-        "payback": payback(cashflows),
-        "kritisk_levetid": kritisk_levetid(cashflows, rate),
+        "NPV": npv(rate, cashflows, years),
+        "IRR": irr(cashflows, years),
+        "payback": payback(cashflows, years),
+        "kritisk_levetid": kritisk_levetid(cashflows, rate, years),
+    }
+
+
+# --- Kritiske værdier i investeringskalkulen -------------------------------
+
+def kritisk_investeringsbeloeb(cashflows: list[float], rate: float,
+                               years: list[float] | None = None) -> float:
+    """Det mest investeringen må koste, før NPV rammer 0.
+
+    = nutidsværdien af alle fremtidige indbetalinger = investering + NPV.
+    (Fyns Spm 8: Maskine II → 797.627 kr.)
+    """
+    return -cashflows[0] + npv(rate, cashflows, years)
+
+
+def kritisk_indkoebspris(cashflows: list[float], rate: float,
+                         years: list[float] | None = None) -> float:
+    """Kritisk værdi for indkøbsprisen på selve aktivet (DSS Spm 6, svejserobot).
+
+    Samme mekanik som kritisk investeringsbeløb: den maksimale pris aktivet
+    må koste, før kapitalværdien bliver negativ.
+    """
+    return kritisk_investeringsbeloeb(cashflows, rate, years)
+
+
+def kritisk_aarlig_indbetaling(investering: float, rate: float, levetid_aar: float,
+                               scrapvaerdi: float = 0.0) -> float:
+    """Mindste gennemsnitlige årlige indbetaling (annuitet) der giver NPV = 0.
+
+    Scrapværdien (modtages i sidste år) trækkes fra som nutidsværdi, før der
+    deles med annuitetsfaktoren. (Fyns Spm 8: Maskine II → 177.615 kr./år.)
+    """
+    if levetid_aar <= 0:
+        return float("nan")
+    pv_scrap = scrapvaerdi / (1 + rate) ** levetid_aar
+    faktor = (1 - (1 + rate) ** -levetid_aar) / rate if rate else float(levetid_aar)
+    return (investering - pv_scrap) / faktor if faktor else float("nan")
+
+
+def kritisk_omsaetning(cashflows: list[float], rate: float, salgspris_pr_stk: float,
+                       db_pr_stk: float, years: list[float] | None = None) -> dict:
+    """Kritisk omsætning i år 1: hvor lavt salget i år 1 kan falde, før NPV = 0.
+
+    Kun år 1 varieres: kritisk indbetaling år 1 = cashflow år 1 − NPV·(1+r)^t1.
+    Derfra: kritisk stk = indbetaling/DB pr. stk; kritisk omsætning = stk·pris.
+    (Fyns Spm 7: Maskine I → ca. 369.000 kr. = 924 stk.)
+    """
+    ys = _aar(cashflows, years)
+    if len(cashflows) < 2:
+        return {"kritisk_indbetaling": float("nan"), "kritisk_stk": float("nan"),
+                "kritisk_omsaetning": float("nan")}
+    n = npv(rate, cashflows, years)
+    krit_ind = cashflows[1] - n * (1 + rate) ** ys[1]
+    krit_stk = krit_ind / db_pr_stk if db_pr_stk else float("nan")
+    return {
+        "kritisk_indbetaling": float(krit_ind),
+        "kritisk_stk": float(krit_stk),
+        "kritisk_omsaetning": float(krit_stk * salgspris_pr_stk) if krit_stk == krit_stk else float("nan"),
     }
 
 
@@ -112,13 +193,21 @@ def bidragskalkulation(kostpris: float, dg: float) -> dict:
 
 
 def fordelingskalkulation(variabel_enhed: float, faste: float, kapacitet: float,
-                          udnyttelse: float, dg: float) -> dict:
-    """Egenpris = variabel enhedsomk. + andel af kapacitetsomk.; +DB → salgspris."""
+                          udnyttelse: float, fortjeneste: float) -> dict:
+    """Egenpris = variabel enhedsomk. + andel af kapacitetsomk.; +avance → salgspris.
+
+    fortjeneste er avancen som andel af salgsprisen (0-1). OBS: det er IKKE
+    dækningsgraden — egenprisen indeholder allerede en andel af de faste
+    omkostninger, så den faktiske DG (= (salgspris − variable)/salgspris)
+    bliver højere end fortjenesteprocenten. Returneres som 'faktisk_dg'.
+    """
     andel = faste / (kapacitet * udnyttelse) if (kapacitet and udnyttelse) else float("nan")
     egenpris = variabel_enhed + andel
-    db = egenpris * dg / (1 - dg) if dg < 1 else float("nan")
-    return {"andel_kapacitetsomk": andel, "egenpris": egenpris, "db": db,
-            "salgspris": egenpris + db}
+    avance = egenpris * fortjeneste / (1 - fortjeneste) if fortjeneste < 1 else float("nan")
+    salgspris = egenpris + avance
+    faktisk_dg = (salgspris - variabel_enhed) / salgspris if salgspris else float("nan")
+    return {"andel_kapacitetsomk": andel, "egenpris": egenpris, "avance": avance,
+            "salgspris": salgspris, "faktisk_dg": faktisk_dg}
 
 
 def retrograd_kalkulation(salgspris: float, dg: float, variable_salgsomk: float,
@@ -177,6 +266,16 @@ def lineaer_afskrivning(nypris: float, scrapvaerdi: float, levetid_aar: float) -
     return {"aarlig": aarlig, "kvartal": aarlig / 4, "maaned": aarlig / 12}
 
 
+def indekstal(vaerdier: list[float]) -> list[float]:
+    """Indekstal med første værdi som basis (= 100). NaN hvis basis er 0/NaN."""
+    if not vaerdier:
+        return []
+    basis = float(vaerdier[0])
+    if basis != basis or basis == 0:
+        return [float("nan")] * len(vaerdier)
+    return [float(v) / basis * 100 for v in vaerdier]
+
+
 def noegletal(omsaetning: float, ebit: float, aarets_resultat: float,
               renteomk: float, aktiver: float, egenkapital: float,
               gaeld: float, omsaetningsaktiver: float, kortfristet_gaeld: float,
@@ -192,6 +291,8 @@ def noegletal(omsaetning: float, ebit: float, aarets_resultat: float,
         "aoh": aoh,                                    # afkastningsgrad = overskudsgrad·AOH
         "egenkapitalforrentning": safe(aarets_resultat, egenkapital),
         "fremmedkapitalforrentning": safe(renteomk, gaeld),
+        # Gearing-identiteten: EKF før skat = AG + (AG − FKF)·gæld/EK
+        "ekf_foer_skat": safe(ebit - renteomk, egenkapital),
         "soliditetsgrad": safe(egenkapital, aktiver),
         "likviditetsgrad": safe(omsaetningsaktiver, kortfristet_gaeld),
         "gearing": safe(gaeld, egenkapital),

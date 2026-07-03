@@ -86,6 +86,78 @@ def test_noegletal():
     assert approx(r["egenkapitalforrentning"], 0.15)
 
 
+def test_npv_med_hul_i_aar():
+    # År-kolonnen skal bruges til diskontering: år 0, 1 og 5 (hul i årrækken)
+    cf = [-1000, 500, 800]
+    ys = [0, 1, 5]
+    expect = -1000 + 500 / 1.1 + 800 / 1.1 ** 5
+    assert approx(ok.npv(0.10, cf, ys), expect, tol=0.001)
+    # Uden years antages konsekutive år 0,1,2 — dét giver et ANDET (og her positivt) tal,
+    # så testen fanger regressionen hvor år-kolonnen ignoreres
+    assert ok.npv(0.10, cf, ys) < 0 < ok.npv(0.10, cf)
+    # IRR skal være konsistent med samme diskontering
+    r = ok.irr(cf, ys)
+    assert approx(ok.npv(r, cf, ys), 0.0, tol=0.001)
+    # payback interpolerer hen over hullet: -500 mangler efter år 1, år 5 giver 800
+    # => 1 + 4·(500/800) = 3,5 år
+    assert approx(ok.payback(cf, ys), 3.5)
+
+
+def test_kritisk_levetid_med_hul_i_aar():
+    cf = [-1000, 500, 800]
+    ys = [0, 1, 5]
+    # Ved 5 %: diskonteret år 1 = 476,2; år 5 = 626,8 — investeringen tjenes hjem
+    # i spændet år 1→5: 1 + 4·(1000−476,2)/626,8 ≈ 4,34 år
+    kl = ok.kritisk_levetid(cf, 0.05, ys)
+    assert approx(kl, 4.34, tol=0.01)
+    # Ved 10 % dækker de diskonterede cashflows (951,2) aldrig investeringen → NaN
+    kl10 = ok.kritisk_levetid(cf, 0.10, ys)
+    assert kl10 != kl10
+
+
+def test_fyns_maskine_1():
+    # Fyns Beklædning Spm 7 (Bilag 3): Maskine I, 8 %, DB 100 kr./stk., scrap 50.000 i år 5
+    cf = [-500000, 100000, 110000, 120000, 130000, 190000]
+    assert approx(ok.npv(0.08, cf), 7024, tol=0.001)          # facit: 7.024 kr.
+    ko = ok.kritisk_omsaetning(cf, 0.08, salgspris_pr_stk=400, db_pr_stk=100)
+    assert approx(ko["kritisk_stk"], 924, tol=0.001)          # facit: 924 stk.
+    assert approx(ko["kritisk_omsaetning"], 369655, tol=0.001)  # facit: ca. 369.000 kr.
+
+
+def test_fyns_maskine_2():
+    # Fyns Beklædning Spm 8 (Bilag 3): Maskine II, 8 %, DB 160 kr./stk., scrap 60.000 i år 5
+    cf = [-750000, 160000, 176000, 192000, 208000, 284000]
+    assert approx(ok.npv(0.08, cf), 47627, tol=0.001)                          # facit: 47.627 kr.
+    assert approx(ok.kritisk_investeringsbeloeb(cf, 0.08), 797627, tol=0.001)  # facit: 797.627 kr.
+    assert approx(ok.kritisk_aarlig_indbetaling(750000, 0.08, 5, 60000),
+                  177615, tol=0.001)                                           # facit: 177.615 kr./år
+    # kritisk indkøbspris er samme mekanik som kritisk investeringsbeløb (DSS Spm 6)
+    assert approx(ok.kritisk_indkoebspris(cf, 0.08), ok.kritisk_investeringsbeloeb(cf, 0.08))
+
+
+def test_fordelingskalkulation():
+    # var 40, faste 200.000, kapacitet 10.000, udnyttelse 80 %, fortjeneste 40 % af salgsprisen
+    r = ok.fordelingskalkulation(40, 200000, 10000, 0.8, 0.40)
+    assert approx(r["andel_kapacitetsomk"], 25)     # 200000/(10000·0,8)
+    assert approx(r["egenpris"], 65)                # 40 + 25
+    assert approx(r["salgspris"], 108.33, tol=0.001)
+    # avancen udgør præcis 40 % af salgsprisen ...
+    assert approx(r["avance"] / r["salgspris"], 0.40, tol=0.001)
+    # ... men den FAKTISKE dækningsgrad er højere (egenprisen indeholder faste omk.)
+    assert approx(r["faktisk_dg"], (108.3333 - 40) / 108.3333, tol=0.001)
+    assert r["faktisk_dg"] > 0.40
+
+
+def test_indekstal():
+    idx = ok.indekstal([200, 220, 180])
+    assert approx(idx[0], 100)
+    assert approx(idx[1], 110)
+    assert approx(idx[2], 90)
+    # basis 0 eller NaN giver NaN hele vejen
+    assert all(v != v for v in ok.indekstal([0, 10]))
+    assert ok.indekstal([]) == []
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

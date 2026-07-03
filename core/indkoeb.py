@@ -158,8 +158,12 @@ def abc_analysis(df: pd.DataFrame,
                  b_cut: float = 0.95) -> pd.DataFrame:
     """ABC-klassifikation efter årsværdi (forbrug * pris).
 
-    Sorterer faldende, beregner akkumuleret andel og tildeler kategori:
-        A hvis akkum. % <= a_cut, B hvis <= b_cut, ellers C.
+    Sorterer faldende, beregner akkumuleret andel og tildeler kategori ud fra
+    den FOREGÅENDE rækkes akkumulerede andel (0 for den første vare):
+        A hvis andelen FØR varen < a_cut, B hvis < b_cut, ellers C.
+    Dvs. A-varerne er præcis dem der skal til for at nå a_cut. Det sikrer at
+    den største vare altid bliver A — også i det degenererede tilfælde hvor
+    én vare alene udgør fx 96 % af værdien (den må aldrig ende som B/C).
     """
     out = df.copy()
     out = out[pd.to_numeric(out[forbrug_col], errors="coerce").notna()]
@@ -175,13 +179,15 @@ def abc_analysis(df: pd.DataFrame,
     out["Akkumuleret %"] = out["Akkumuleret værdi"] / total if total else 0.0
 
     def klass(p: float) -> str:
-        if p <= a_cut:
+        if p < a_cut:
             return "A"
-        if p <= b_cut:
+        if p < b_cut:
             return "B"
         return "C"
 
-    out["Kategori"] = out["Akkumuleret %"].apply(klass)
+    # Klassificér på andelen FØR varen (shift), så topvaren altid er A.
+    forrige = out["Akkumuleret %"].shift(1).fillna(0.0)
+    out["Kategori"] = forrige.apply(klass)
     out["Andel %"] = out["Årsværdi"] / total if total else 0.0
     return out
 
@@ -269,6 +275,45 @@ def breakeven_volume(fixed_a: float, var_a: float,
 def tca_total(components: dict) -> float:
     """Sum af TCO-komponenter (kr./år)."""
     return float(sum(v for v in components.values() if v is not None))
+
+
+def tca_totalpris(behov: float, pris_pr_stk: float, uden_defekt_pct: float,
+                  defektpris: float, fragt_pr_laes: float,
+                  laes_stoerrelse: float, ordreomkostning: float,
+                  antal_ordrer: float) -> dict:
+    """TCA-totalpris for én leverandør (DSS-notationen, leverandørsammenligning).
+
+        totalpris = pris/stk · behov
+                  + (1 − uden_defekt_pct) · behov · defektpris
+                  + fragt · (behov / læs-størrelse)
+                  + ordreomkostning · antal ordrer
+
+    behov            = årligt behov (stk.)
+    pris_pr_stk      = leverandørens stykpris (kr.)
+    uden_defekt_pct  = andel fejlfrie varer som decimal (fx 0.95 = 95 % uden defekt)
+    defektpris       = omkostning pr. defekt vare (kr./stk.)
+    fragt_pr_laes    = fragt pr. læs (kr.), laes_stoerrelse = stk. pr. læs
+    ordreomkostning  = indkøbsstyring pr. ordre (kr.), antal_ordrer = ordrer/år
+
+    Returnerer alle mellemregninger, så de kan vises ved siden af svaret.
+    """
+    varekoeb = pris_pr_stk * behov
+    defekt_andel = 1 - uden_defekt_pct
+    defektomkostning = defekt_andel * behov * defektpris
+    antal_laes = behov / laes_stoerrelse if laes_stoerrelse > 0 else float("nan")
+    fragtomkostning = fragt_pr_laes * antal_laes
+    ordreomkostning_total = ordreomkostning * antal_ordrer
+    total = varekoeb + defektomkostning + fragtomkostning + ordreomkostning_total
+    return {
+        "varekoeb": varekoeb,
+        "defekt_andel": defekt_andel,
+        "defektomkostning": defektomkostning,
+        "antal_laes": antal_laes,
+        "fragtomkostning": fragtomkostning,
+        "ordreomkostning_total": ordreomkostning_total,
+        "total": total,
+        "totalpris_pr_stk": total / behov if behov > 0 else float("nan"),
+    }
 
 
 # ---------------------------------------------------------------------------

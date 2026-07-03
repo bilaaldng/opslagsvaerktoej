@@ -485,6 +485,360 @@ def g_min_stations():
 
 
 # ---------------------------------------------------------------------------
+# UDVIDELSE (2026-07-03): flere opgavetyper — alle facit beregnes via core/*.py
+# Hver generator har også statiske 'fortolk'- og 'faelde'-felter (det eksaminator
+# spørger om efter tallet). Emnerne er neutrale — casen er kun kilde til metoden.
+# ---------------------------------------------------------------------------
+
+def g_irr():
+    inv = random.choice([300, 400, 500, 600]) * 1000
+    n = random.choice([4, 5, 6])
+    faktor = random.choice([1.3, 1.4, 1.5, 1.6])
+    a = max(round(inv * faktor / n / 10000) * 10000, 10000)
+    cfs = [-inv] + [a] * n
+    svar = oek.irr(cfs) * 100
+    return {
+        "fag": "Økonomi", "emne": "IRR (intern rente)",
+        "sp": f"En investering koster {_kr(inv)} kr. og giver {_kr(a)} kr. om året i {n} år. "
+              f"Beregn den interne rente (IRR) i % (1 decimal).",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": 0.3,
+        "metode": f"IRR er renten hvor NPV = 0. Med −{_kr(inv)} kr. og {n} × {_kr(a)} kr. "
+                  f"løses NPV(r) = 0 → IRR ≈ {_pct(svar)}%.",
+        "fortolk": "IRR holdes op mod kalkulationsrenten (afkastkravet): er IRR højere, tjener "
+                   "investeringen mere end kravet og er lønsom.",
+        "faelde": "IRR kan ikke stå alene — to projekter med samme IRR kan have vidt forskellig "
+                  "NPV i kroner. Ved valg mellem projekter vinder højeste NPV, ikke højeste IRR.",
+    }
+
+
+def g_kritisk_levetid():
+    inv = random.choice([300, 400, 500, 600]) * 1000
+    n = random.choice([6, 7, 8])
+    faktor = random.choice([1.6, 1.8, 2.0])
+    a = max(round(inv * faktor / n / 10000) * 10000, 10000)
+    r = random.choice([6, 7, 8, 10])
+    cfs = [-inv] + [a] * n
+    svar = oek.kritisk_levetid(cfs, r / 100)
+    return {
+        "fag": "Økonomi", "emne": "Kritisk levetid",
+        "sp": f"En investering på {_kr(inv)} kr. giver {_kr(a)} kr. om året, kalkulationsrente "
+              f"{r}%. Hvor mange år skal den mindst holde, før den er tjent hjem (NPV = 0)? "
+              f"(2 decimaler).",
+        "svar": svar, "enhed": "år", "dec": 2, "tol": max(abs(svar) * 0.02, 0.05),
+        "metode": f"Læg de tilbagediskonterede indbetalinger sammen år for år, til de dækker "
+                  f"{_kr(inv)} kr. Grænsen nås efter ≈ {_pct(svar, 2)} år.",
+        "fortolk": "Holder investeringen kortere end den kritiske levetid, når den ALDRIG at "
+                   "blive tjent hjem — så er den ulønsom.",
+        "faelde": "Regn med de TILBAGEDISKONTEREDE beløb, ikke de rå. Uden diskontering får du "
+                  "en for kort (for optimistisk) levetid.",
+    }
+
+
+def g_nulpunktsomsaetning():
+    pris = random.choice([150, 200, 250, 300, 400])
+    var = min(random.choice([60, 90, 120, 150]), pris - 30)
+    faste = random.choice([300, 400, 500, 750]) * 1000
+    res = oek.break_even(pris, var, faste)
+    svar = res["nulpunktsomsaetning"]
+    return {
+        "fag": "Økonomi", "emne": "Nulpunktsomsætning",
+        "sp": f"Faste omkostninger {_kr(faste)} kr., salgspris {pris} kr./stk., variable "
+              f"enhedsomkostninger {var} kr. Beregn nulpunktsOMSÆTNINGEN i kr. (afrund).",
+        "svar": svar, "enhed": "kr.", "dec": 0, "tol": max(abs(svar) * 0.02, 100),
+        "metode": f"DB = {pris} − {var} = {pris-var} kr. Nulpunktsmængde = {_kr(faste)}/{pris-var} "
+                  f"= {_tal(res['nulpunktsmaengde'],0)} stk. Nulpunktsomsætning = mængde·pris = "
+                  f"{_kr(svar)} kr.",
+        "fortolk": "Under denne omsætning giver virksomheden underskud; over den, overskud.",
+        "faelde": "Nulpunktsomsætning = mængde · SALGSPRIS — ikke mængde · dækningsbidrag.",
+    }
+
+
+def g_sikkerhedsmargin():
+    pris = random.choice([150, 200, 250, 300])
+    var = min(random.choice([60, 90, 120]), pris - 30)
+    faste = random.choice([300, 400, 500]) * 1000
+    be = oek.break_even(pris, var, faste)
+    faktisk = round(be["nulpunktsomsaetning"] * random.choice([1.2, 1.3, 1.4, 1.5]) / 1000) * 1000
+    svar = oek.safety_margin(faktisk, be["nulpunktsomsaetning"]) * 100
+    return {
+        "fag": "Økonomi", "emne": "Sikkerhedsmargin",
+        "sp": f"Den faktiske omsætning er {_kr(faktisk)} kr., og nulpunktsomsætningen er "
+              f"{_kr(be['nulpunktsomsaetning'])} kr. Beregn sikkerhedsmarginen i % (1 decimal).",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": 0.3,
+        "metode": f"Sikkerhedsmargin = (omsætning − nulpunktsomsætning)/omsætning = "
+                  f"({_kr(faktisk)} − {_kr(be['nulpunktsomsaetning'])})/{_kr(faktisk)} = {_pct(svar)}%.",
+        "fortolk": "Hvor meget omsætningen må falde, før virksomheden rammer nulpunktet. "
+                   "Høj margin = mere robust mod nedgang.",
+        "faelde": "Marginen måles i forhold til den FAKTISKE omsætning, ikke nulpunktsomsætningen.",
+    }
+
+
+def g_retrograd():
+    salgspris = random.choice([200, 250, 300, 400, 500])
+    dg = random.choice([0.30, 0.40, 0.50])
+    vso = random.choice([10, 20, 30, 40])
+    told = random.choice([0.00, 0.05, 0.10])
+    res = oek.retrograd_kalkulation(salgspris, dg, vso, told)
+    svar = res["maks_koebspris"]
+    return {
+        "fag": "Økonomi", "emne": "Retrograd kalkulation (maks. købspris)",
+        "sp": f"Markedsprisen er fast på {salgspris} kr., den ønskede dækningsgrad er "
+              f"{_pct(dg*100,0)}%, variable salgsomkostninger {vso} kr./stk. og told "
+              f"{_pct(told*100,0)}% af købsprisen. Hvad er den HØJESTE indkøbspris du må betale? "
+              f"(afrund).",
+        "svar": svar, "enhed": "kr.", "dec": 0, "tol": max(abs(svar) * 0.01, 1),
+        "metode": f"Baglæns fra prisen: DB = {salgspris}·{_pct(dg*100,0)}% = {_tal(res['db'],0)} kr. "
+                  f"Maks. købspris = (salgspris·(1−DG) − salgsomk.)/(1+told) = "
+                  f"({salgspris}·{round(1-dg,2)} − {vso})/{round(1+told,2)} = {_tal(svar,0)} kr.",
+        "fortolk": "Retrograd bruges når markedet bestemmer prisen: du regner BAGLÆNS til hvad "
+                   "varen højst må koste i indkøb, hvis din avance skal holde.",
+        "faelde": "Her er salgsprisen fast — en HØJERE ønsket dækningsgrad giver en LAVERE maks. "
+                  "købspris (modsat bidragskalkulation, hvor prisen stiger med DG).",
+    }
+
+
+def g_prisoptimering():
+    p0 = random.choice([80, 100, 120])
+    step = random.choice([20, 25, 30])
+    q0 = random.choice([1000, 1200, 1400])
+    dq = random.choice([150, 200, 250])
+    priser = [p0 + step * i for i in range(5)]
+    afsaetning = [q0 - dq * i for i in range(5)]
+    var = random.choice([30, 40, 50])
+    faste = random.choice([20, 30, 40]) * 1000
+    res = oek.prisoptimering(priser, afsaetning, var, faste)
+    svar = res["optimal_pris"]
+    return {
+        "fag": "Økonomi", "emne": "Prisoptimering (optimal pris)",
+        "sp": f"Priser {priser} kr. giver afsætning {afsaetning} stk. Variable enhedsomkostninger "
+              f"{var} kr., faste {_kr(faste)} kr. Ved hvilken pris er overskuddet størst? (kr.).",
+        "svar": svar, "enhed": "kr.", "dec": 0, "tol": 0.5,
+        "metode": f"Regn overskud = pris·mængde − (variabel·mængde + faste) for hver pris. "
+                  f"Størst ved {_tal(svar,0)} kr. (afsætning {_tal(res['optimal_afsaetning'],0)} "
+                  f"stk., overskud {_kr(res['max_overskud'])} kr.).",
+        "fortolk": "Optimum ligger hvor grænseomsætning = grænseomkostning; totalmetoden finder "
+                   "samme punkt ved at maksimere overskuddet direkte.",
+        "faelde": "Højeste pris giver ikke størst overskud — en høj pris sænker afsætningen. "
+                  "Det er overskuddet i kroner, ikke prisen eller omsætningen, der optimeres.",
+    }
+
+
+def g_forecast_mad():
+    n = random.choice([4, 5, 6])
+    actual = [random.choice([80, 90, 100, 110, 120, 130]) for _ in range(n)]
+    forecast = [a + random.choice([-15, -10, -5, 5, 10, 15]) for a in actual]
+    res = ind.forecast_errors(actual, forecast)
+    svar = res["MAD"]
+    return {
+        "fag": "Indkøb", "emne": "Forecast-fejl (MAD)",
+        "sp": f"Faktisk efterspørgsel var {actual}, forecast var {forecast}. Beregn MAD "
+              f"(gennemsnitlig absolut afvigelse, 1 decimal).",
+        "svar": svar, "enhed": "", "dec": 1, "tol": max(abs(svar) * 0.02, 0.1),
+        "metode": f"Fejl pr. periode = faktisk − forecast. MAD = gennemsnit af de NUMERISKE "
+                  f"fejl (fortegn ignoreres) = {_pct(svar,1)}.",
+        "fortolk": "MAD viser den typiske fejlstørrelse. Lav MAD = et præcist forecast, du kan "
+                   "styre lager og sikkerhedslager efter.",
+        "faelde": "MAD bruger de ABSOLUTTE fejl. Bruger du fortegnene (som i bias/MFE), ophæver "
+                  "plus og minus hinanden, og du undervurderer fejlen.",
+    }
+
+
+def g_vaegtet_score():
+    krit = ["Pris", "Kvalitet", "Levering"]
+    vaegte = random.choice([[0.5, 0.3, 0.2], [0.4, 0.4, 0.2], [0.6, 0.2, 0.2]])
+    scores = {k: random.choice([2, 3, 4, 5]) for k in krit}
+    weights = {k: v for k, v in zip(krit, vaegte)}
+    svar = ind.weighted_score(scores, weights)
+    dele = " + ".join(f"{scores[k]}·{_pct(weights[k]*100,0)}%" for k in krit)
+    return {
+        "fag": "Indkøb", "emne": "Vægtet leverandørscore",
+        "sp": f"En leverandør scores (1-5): Pris {scores['Pris']}, Kvalitet {scores['Kvalitet']}, "
+              f"Levering {scores['Levering']}. Vægtene er Pris {_pct(weights['Pris']*100,0)}%, "
+              f"Kvalitet {_pct(weights['Kvalitet']*100,0)}%, Levering "
+              f"{_pct(weights['Levering']*100,0)}%. Beregn den samlede vægtede score (2 decimaler).",
+        "svar": svar, "enhed": "", "dec": 2, "tol": 0.03,
+        "metode": f"Samlet score = Σ(score · vægt) = {dele} = {_pct(svar,2)}.",
+        "fortolk": "Den vægtede score gør leverandører sammenlignelige på tværs af bløde og hårde "
+                   "kriterier — højeste score vinder, alt andet lige.",
+        "faelde": "Vægtene skal summe til 100%. Tag ikke bare et simpelt gennemsnit af scorerne — "
+                  "så ignorerer du hvilke kriterier der betyder mest.",
+    }
+
+
+def g_periodisk_R():
+    d = random.choice([20, 30, 40, 50, 80])
+    P = random.choice([2, 3, 4])
+    L = random.choice([1, 2, 3])
+    ss = random.choice([30, 50, 80, 100])
+    svar = ind.periodic_max_level(d, P, L, ss)
+    return {
+        "fag": "Indkøb", "emne": "Periodisk review (max-niveau R)",
+        "sp": f"Efterspørgslen er {d} stk./uge, review-intervallet P = {P} uger, ledetiden "
+              f"L = {L} uger og sikkerhedslageret {ss} stk. Beregn max-niveauet R.",
+        "svar": svar, "enhed": "stk.", "dec": 0, "tol": 1,
+        "metode": f"R = d·(P+L) + SS = {d}·({P}+{L}) + {ss} = {_tal(svar,0)} stk.",
+        "fortolk": "Ved hvert tjek bestilles op til R. Dækker både review-intervallet OG ledetiden, "
+                   "fordi du først kan reagere igen næste periode.",
+        "faelde": "Perioden skal være P+L, ikke kun L. Glemmer du review-intervallet, løber du tør, "
+                  "inden næste bestilling når frem.",
+    }
+
+
+def g_makebuy_breakeven():
+    koeb_var = random.choice([80, 100, 120, 150])
+    egen_fast = random.choice([100, 150, 200, 300]) * 1000
+    egen_var = koeb_var - random.choice([20, 30, 40, 50])
+    svar = ind.breakeven_volume(0, koeb_var, egen_fast, egen_var)
+    return {
+        "fag": "Indkøb", "emne": "Make-vs-buy (breakeven-volumen)",
+        "sp": f"KØB koster {koeb_var} kr./stk. (ingen faste). EGENPRODUKTION koster {_kr(egen_fast)} "
+              f"kr. i faste + {egen_var} kr./stk. Ved hvilket årligt volumen koster de to lige "
+              f"meget? (afrund til stk.).",
+        "svar": svar, "enhed": "stk.", "dec": 0, "tol": max(abs(svar) * 0.02, 1),
+        "metode": f"Sæt totalerne lig: {koeb_var}·x = {_kr(egen_fast)} + {egen_var}·x → "
+                  f"x = {_kr(egen_fast)}/({koeb_var}−{egen_var}) = {_tal(svar,0)} stk.",
+        "fortolk": "Over dette volumen kan egenproduktion betale sig (de faste fordeles på flere "
+                   "stk.); under det er køb billigst.",
+        "faelde": "Breakeven alene afgør ikke valget — kvalitet, leveringstid, kapacitet og "
+                  "risiko skal med. Billigst på papiret er ikke altid bedst.",
+    }
+
+
+def g_otif():
+    ot = random.choice([90, 92, 94, 95, 96, 98])
+    iff = random.choice([88, 90, 92, 95, 97])
+    res = prod.otif(ot, iff, total=100)
+    svar = res["OTIF"] * 100
+    return {
+        "fag": "Produktion", "emne": "OTIF (On Time In Full)",
+        "sp": f"{ot}% af ordrerne kom til tiden, og {iff}% kom komplet. Hvis de to ting er "
+              f"uafhængige, hvad er OTIF (til tiden OG komplet) i % (1 decimal)?",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": 0.3,
+        "metode": f"OTIF = andel til tiden · andel komplet = {ot/100:.2f}·{iff/100:.2f} = "
+                  f"{_pct(svar)}%.",
+        "fortolk": "OTIF straffer hårdt: begge krav skal være opfyldt samtidig, så tallet er "
+                   "altid lavere end hver enkelt andel.",
+        "faelde": "Tag IKKE gennemsnittet af de to andele — de ganges (ved uafhængighed). "
+                  "Gennemsnit overvurderer leveringsevnen.",
+    }
+
+
+def g_knap_kapacitet():
+    a_db, a_tid, a_eft = random.choice([160, 200, 240]), random.choice([4, 5]), random.choice([300, 400])
+    b_db, b_tid, b_eft = random.choice([180, 220, 260]), random.choice([6, 8]), random.choice([250, 350])
+    tid = random.choice([1800, 2000, 2400, 3000])
+    produkter = [
+        {"navn": "A", "db_stk": a_db, "tid_pr_stk": a_tid, "efterspoergsel": a_eft},
+        {"navn": "B", "db_stk": b_db, "tid_pr_stk": b_tid, "efterspoergsel": b_eft},
+    ]
+    res = prod.knap_kapacitet(produkter, tid)
+    svar = res["samlet_db"]
+    ap, bp = a_db / a_tid, b_db / b_tid
+    foerst = "A" if ap >= bp else "B"
+    return {
+        "fag": "Produktion", "emne": "Knap kapacitet (DB pr. flaskehalstime)",
+        "sp": f"Flaskehalsen har {tid} min. til rådighed. Produkt A: DB {a_db} kr./stk., {a_tid} "
+              f"min./stk., efterspørgsel {a_eft} stk. Produkt B: DB {b_db} kr./stk., {b_tid} "
+              f"min./stk., efterspørgsel {b_eft} stk. Hvad er det størst mulige samlede "
+              f"dækningsbidrag? (afrund til kr.).",
+        "svar": svar, "enhed": "kr.", "dec": 0, "tol": max(abs(svar) * 0.02, 100),
+        "metode": f"Prioritér efter DB pr. flaskehalstime: A = {a_db}/{a_tid} = {_tal(ap,0)} "
+                  f"kr./min., B = {b_db}/{b_tid} = {_tal(bp,0)} kr./min. Producér {foerst} først "
+                  f"op til efterspørgsel, fyld resten med det andet → samlet DB {_kr(svar)} kr.",
+        "fortolk": "Når en ressource er knap, er det DB pr. FLASKEHALSTIME der tæller — ikke DB "
+                   "pr. stk. Det produkt der tjener mest pr. knap minut, laves først.",
+        "faelde": "Ranger IKKE efter DB pr. stk. Et produkt med højt DB/stk. kan være en dårlig "
+                  "forretning, hvis det bruger uforholdsmæssigt meget flaskehalstid.",
+    }
+
+
+def g_mm1():
+    my = random.choice([12, 15, 20, 25, 30])
+    lam = random.choice([v for v in [6, 8, 10, 12, 16, 18] if v < my])
+    res = prod.queue_metrics(lam, my)
+    svar = res["rho"] * 100
+    return {
+        "fag": "Produktion", "emne": "Udnyttelsesgrad ρ (kø)",
+        "sp": f"En ressource får {lam} enheder/time (λ) og kan behandle {my} enheder/time (μ). "
+              f"Beregn udnyttelsesgraden ρ i % (1 decimal).",
+        "svar": svar, "enhed": "%", "dec": 1, "tol": 0.3,
+        "metode": f"ρ = λ/μ = {lam}/{my} = {_pct(svar)}%.",
+        "fortolk": "ρ er hvor stor en andel af tiden ressourcen er optaget. Jo tættere på 100%, "
+                   "jo længere køer og ventetider — de eksploderer, når ρ nærmer sig 1.",
+        "faelde": "Fuld udnyttelse (ρ ≈ 100%) er ikke et mål: ventetiden går mod uendelig. "
+                  "Lidt luft i kapaciteten holder køen nede.",
+    }
+
+
+def g_omvendt_normal():
+    mu = random.choice([100, 200, 500, 1000])
+    sigma = random.choice([10, 20, 25, 50])
+    p = random.choice([0.05, 0.10, 0.90, 0.95, 0.975])
+    z = stat.prob_to_z(p)
+    svar = mu + z * sigma
+    p_vis = _pct(p * 100, 1).rstrip("0").rstrip(",")
+    return {
+        "fag": "Statistik", "emne": "Omvendt normalfordeling (find x)",
+        "sp": f"En normalfordeling har µ = {mu} og σ = {sigma}. Find den værdi x, hvor "
+              f"P(X < x) = {p_vis}% (1 decimal).",
+        "svar": svar, "enhed": "", "dec": 1, "tol": max(abs(svar) * 0.01, 0.3),
+        "metode": f"Find først z ud fra sandsynligheden: z = {_pct(z,2)}. "
+                  f"x = µ + z·σ = {mu} + {_pct(z,2)}·{sigma} = {_pct(svar,1)}.",
+        "fortolk": "Den omvendte vej: fra en ønsket sandsynlighed/percentil tilbage til en "
+                   "konkret grænseværdi — fx serviceniveau → nødvendigt lagerniveau.",
+        "faelde": "Ved sandsynligheder under 50% er z NEGATIV, så x ligger under middelværdien. "
+                  "Tjek fortegnet på z, før du regner videre.",
+    }
+
+
+def g_regression_forudsig():
+    b = random.choice([2, 3, 4, 5])
+    a = random.choice([10, 20, 30, 50])
+    xs = [1, 2, 3, 4, 5]
+    ys = [a + b * x + random.choice([-2, -1, 0, 1, 2]) for x in xs]
+    reg = stat.linear_regression(xs, ys)
+    xny = random.choice([6, 7, 8])
+    svar = stat.regression_predict(xny, reg["haeldning"], reg["skaering"])
+    return {
+        "fag": "Statistik", "emne": "Regression (forudsigelse)",
+        "sp": f"Datapunkter (x, y): {list(zip(xs, ys))}. Find regressionslinjen og forudsig y "
+              f"for x = {xny} (1 decimal).",
+        "svar": svar, "enhed": "", "dec": 1, "tol": max(abs(svar) * 0.05, 0.5),
+        "metode": f"Mindste kvadraters linje: hældning b ≈ {_pct(reg['haeldning'],2)}, skæring "
+                  f"a ≈ {_pct(reg['skaering'],2)} (R² = {_pct(reg['r2'],2)}). "
+                  f"ŷ = a + b·x = {_pct(reg['skaering'],1)} + {_pct(reg['haeldning'],2)}·{xny} = "
+                  f"{_pct(svar,1)}.",
+        "fortolk": "Regression bruger den historiske sammenhæng til at forudsige. R² tæt på 1 "
+                   "betyder, at x forklarer y godt — så forudsigelsen er mere pålidelig.",
+        "faelde": "Forudsig kun inden for (eller nær) dataområdet. Ekstrapolerer du langt uden "
+                  "for x-værdierne, kan sammenhængen være brudt sammen.",
+    }
+
+
+def g_hypotesetest_z():
+    mu0 = random.choice([50, 75, 100, 200])
+    sigma = random.choice([8, 10, 12, 15])
+    n = random.choice([25, 36, 100])
+    diff = random.choice([-3, -2, 2, 3, 4]) * (sigma / math.sqrt(n))
+    mean = round(mu0 + diff, 2)
+    res = stat.z_test_mean(mean, sigma, n, mu0, "hoejre")
+    svar = res["z"]
+    return {
+        "fag": "Statistik", "emne": "Hypotesetest (teststørrelse z)",
+        "sp": f"Du tester H0: µ = {mu0} mod H1: µ > {mu0}. Stikprøven har gennemsnit {_pct(mean,2)}, "
+              f"σ = {sigma} og n = {n}. Beregn teststørrelsen z (2 decimaler).",
+        "svar": svar, "enhed": "", "dec": 2, "tol": 0.05,
+        "metode": f"Standardfejl = σ/√n = {sigma}/√{n} = {_pct(res['se'],3)}. "
+                  f"z = (x̄ − µ0)/standardfejl = ({_pct(mean,2)} − {mu0})/{_pct(res['se'],3)} = "
+                  f"{_pct(svar,2)}. Kritisk værdi (5%, ensidet) = 1,645.",
+        "fortolk": "Er z større end den kritiske værdi (1,645 ved 5% ensidet), forkastes H0 — "
+                   "gennemsnittet er så signifikant større end påstanden.",
+        "faelde": "p-værdien er IKKE sandsynligheden for at H0 er sand. Den er sandsynligheden "
+                  "for at se dette resultat (eller mere ekstremt), HVIS H0 var sand.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -503,6 +857,14 @@ _GEN = [
     (g_ci_andel, "Statistik"), (g_p_ucl, "Statistik"),
     (g_poq, "Indkøb"),
     (g_littles_wip, "Produktion"), (g_line_balance, "Produktion"), (g_min_stations, "Produktion"),
+    # Udvidelse 2026-07-03 — dækker de tidligere manglende opgavetyper
+    (g_irr, "Økonomi"), (g_kritisk_levetid, "Økonomi"), (g_nulpunktsomsaetning, "Økonomi"),
+    (g_sikkerhedsmargin, "Økonomi"), (g_retrograd, "Økonomi"), (g_prisoptimering, "Økonomi"),
+    (g_forecast_mad, "Indkøb"), (g_vaegtet_score, "Indkøb"), (g_periodisk_R, "Indkøb"),
+    (g_makebuy_breakeven, "Indkøb"),
+    (g_otif, "Produktion"), (g_knap_kapacitet, "Produktion"), (g_mm1, "Produktion"),
+    (g_omvendt_normal, "Statistik"), (g_regression_forudsig, "Statistik"),
+    (g_hypotesetest_z, "Statistik"),
 ]
 
 FAG_LISTE = ["Økonomi", "Statistik", "Indkøb", "Produktion"]

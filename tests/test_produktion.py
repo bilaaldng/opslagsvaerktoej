@@ -154,6 +154,54 @@ def test_sop_level_vs_chase():
     assert lev["total"] > 0 and cha["total"] > 0
 
 
+def test_oee_guard_umulig_stilstand():
+    # stilstand > planlagt tid: køretid negativ -> NaN i stedet for stille positivt tal
+    r = pr.oee(480, 500, 0.5, 700, 670)
+    assert math.isnan(r["tilgaengelighed"]) and math.isnan(r["OEE"])
+    # stilstand = planlagt tid: køretid 0 -> ydelse og OEE NaN
+    r0 = pr.oee(480, 480, 0.5, 700, 670)
+    assert math.isnan(r0["ydelse"]) and math.isnan(r0["OEE"])
+
+
+def test_assign_stations_heuristik():
+    # takt 4: [3,1] fylder station 1, [2, 1.5] station 2, [2.5, 1] station 3
+    assert pr.assign_stations([3, 1, 2, 1.5, 2.5, 1], 4) == [1, 1, 2, 2, 3, 3]
+    # en opgave større end takt får sin egen station
+    assert pr.assign_stations([5, 1], 4) == [1, 2]
+    # ugyldig takt: én station pr. opgave (ingen crash)
+    assert pr.assign_stations([1, 2, 3], 0) == [1, 2, 3]
+    assert pr.assign_stations([], 4) == []
+
+
+def test_mrp_lot_multipla():
+    gross = [0, 0, 120, 0, 0]
+    r_min = pr.mrp_item(gross, [0] * 5, on_hand=0, lead_time=1, lot_size=50,
+                        weeks=5, lot_mode="min")
+    r_mul = pr.mrp_item(gross, [0] * 5, on_hand=0, lead_time=1, lot_size=50,
+                        weeks=5, lot_mode="multipla")
+    assert approx(r_min["planned_receipts"][2], 120)   # maks(120, 50) = 120
+    assert approx(r_mul["planned_receipts"][2], 150)   # loft(120/50)·50 = 150
+    assert approx(r_mul["pei"][2], 30)                 # 150 - 120
+
+
+def test_sop_restordre_og_afrunding():
+    # Front-tung efterspørgsel giver restordre (negativt slutlager) i md. 1 for Level
+    fc = [1600, 400]
+    common = dict(timer_pr_enhed=2, timer_pr_md=160, startlager=0, start_arbejdere=13,
+                  hyreomk=0, fyreomk=0, lageromk=10)
+    lev = pr.sop_plan(fc, strategi="Level", restordreomk=30, **common)
+    # krævede arbejdere [20, 5], snit 12,5 -> round-half-up = 13 (banker's ville give 12)
+    assert lev["workers"] == [13, 13]
+    # produktion 13·160/2 = 1040/md -> ending = [-560, +80]
+    assert approx(lev["ending"][0], -560) and approx(lev["ending"][1], 80)
+    assert approx(lev["lager_total"], 80 * 10)         # kun positivt lager til lagersats
+    assert approx(lev["restordre_total"], 560 * 30)    # negativt lager til restordresats
+    assert approx(lev["total"], 800 + 16800)
+    # bagudkompatibelt: uden restordreomk falder den tilbage til lageromk
+    lev2 = pr.sop_plan(fc, strategi="Level", **common)
+    assert approx(lev2["restordre_total"], 560 * 10)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = 0

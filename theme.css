@@ -1,13 +1,43 @@
 /* ============================================================
-   OPSLAGSVÆRKTØJ — mørkt slate-tema · "refined-slate-tactile"
-   Fundament: refined-slate-glass (glass-lite dybde + token-system
-   + :has()-scoped korthover). Podet ind: animeret accent-stribe
-   på kort/tabs (::before), monospace-tal for skarp aflæsning,
-   uppercase metric-labels, spring-easing + brightness på knapper,
-   typede alerts og selectbox/tag-styling.
-   Ren CSS, system-/mono-fontstak, offline-sikker. Ingen JS.
-   Slate-identitet bevaret — accent holdt STRENGT blå.
+   OPSLAGSVÆRKTØJ — mørkt slate-tema · "nordisk instrumentbræt"
+   Fundament: refined-slate-tactile (glass-lite dybde + tokens).
+   Identitet: Familjen Grotesk (skandinavisk grotesk, selv-hostet
+   woff2 — ingen CDN) til tekst/overskrifter, JetBrains Mono til
+   tal. Fag-farvekodede kort (--kort-accent sættes pr. kort fra
+   Hjem.py), hero-forside med kommandopalet-søgefelt, typede
+   alerts på 1.58-testids, kort-styling scoped med .st-key-*
+   (lækker ikke længere til andre siders containere).
+   Ren CSS, offline-sikker. Ingen JS. Accent holdt blå; fag-
+   farverne bruges kun som tynde striber/badges.
    ============================================================ */
+
+/* ---- Selv-hostede fonte (server: enableStaticServing) ------
+   Registreres også via [[theme.fontFaces]] i config.toml —
+   dobbelt registrering er harmløs, og CSS'en her virker selv
+   hvis config-nøglen en dag forsvinder. Latin-subset dækker
+   dansk æ/ø/å. Mangler filerne, falder alt pænt tilbage til
+   systemfonten (font-display: swap). ------------------------- */
+@font-face {
+  font-family: "Familjen Grotesk";
+  src: url("app/static/fonts/familjen-normal-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Familjen Grotesk";
+  src: url("app/static/fonts/familjen-italic-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("app/static/fonts/jbmono-normal-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ---- Design-tokens (ét sted at justere nuancer) ---------- */
 :root {
@@ -57,8 +87,11 @@
   --r-lg: 16px;
 
   /* monospace til tal (skarp aflæsning i regnetungt værktøj) */
-  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono",
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", "Roboto Mono",
           Menlo, Consolas, "Liberation Mono", monospace;
+  /* sans-stak med appens egen skrift forrest */
+  --sans: "Familjen Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 
   /* timing — rolig, ensartet smoothness */
   --ease:   cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -68,10 +101,9 @@
   --t-slow: 210ms;
 }
 
-/* ---- System-font-stak (offline, ingen CDN) -------------- */
-html, body, [class*="css"], .stApp, .stMarkdown, button, input, textarea, select {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-               "Helvetica Neue", Arial, "Noto Sans", sans-serif !important;
+/* ---- Font-stak (selv-hostet, offline — ingen CDN) -------- */
+html, body, .stApp, .stMarkdown, button, input, textarea, select {
+  font-family: var(--sans) !important;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -80,12 +112,21 @@ html, body, [class*="css"], .stApp, .stMarkdown, button, input, textarea, select
    BAGGRUND + TOPBAR
    ============================================================ */
 .stApp {
+  background: var(--bg-top);
+  color: var(--txt);
+}
+/* Baggrundsgradienterne på et fast lag bag alt indhold —
+   background-attachment:fixed gav scroll-hak i Safari */
+.stApp::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(1100px 520px at 18% -8%, rgba(59, 130, 246, 0.10), transparent 60%),
     radial-gradient(900px 480px at 110% 6%, rgba(96, 165, 250, 0.06), transparent 55%),
     linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bot) 100%);
-  background-attachment: fixed;
-  color: var(--txt);
 }
 
 [data-testid="stHeader"]    { background: transparent; }
@@ -109,9 +150,9 @@ section.main > div.block-container {
 /* ============================================================
    TYPOGRAFI + RYTME
    ============================================================ */
-h1, h2, h3 { letter-spacing: 0.2px; color: var(--txt-strong); }
-h1 { font-weight: 700; }
-h2, h3 { font-weight: 650; }
+h1, h2, h3 { color: var(--txt-strong); font-family: var(--sans); }
+h1 { font-weight: 700; letter-spacing: -0.02em; }
+h2, h3 { font-weight: 650; letter-spacing: -0.01em; }
 
 [data-testid="stVerticalBlock"]   { gap: 1.0rem; }
 [data-testid="stHorizontalBlock"] { gap: 1.05rem; }
@@ -166,10 +207,12 @@ hr, [data-testid="stDivider"] hr {
 [data-testid="stSidebarNav"] a[aria-current="page"] p { color: var(--txt-strong) !important; }
 
 /* ============================================================
-   KORT — st.container(border=True) — PRIMÆRT KLIK-MÅL
-   glass-lite dybde + animeret top-accent-stribe (::before)
+   FAG-KORT — forsidens klikbare kort, scoped med .st-key-fagkort_*
+   (st.container(key="fagkort_N") får klassen st-key-fagkort_N).
+   Rammer IKKE længere andre siders bordered containere.
+   Fagets farve sættes pr. kort som --kort-accent fra Hjem.py.
    ============================================================ */
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)) {
+[class*="st-key-fagkort"] {
   position: relative;
   background:
     linear-gradient(180deg, rgba(51, 65, 85, 0.34), rgba(30, 41, 59, 0.52)),
@@ -181,48 +224,55 @@ hr, [data-testid="stDivider"] hr {
   -webkit-backdrop-filter: blur(7px) saturate(115%);
   backdrop-filter: blur(7px) saturate(115%);
   overflow: hidden;
+  cursor: pointer;
+  min-height: 172px;            /* ens korthøjde -> ryddeligt 3-kol grid */
   transition: transform var(--t-base) var(--spring),
               box-shadow var(--t-base) var(--ease),
               border-color var(--t-base) var(--ease),
               background var(--t-base) var(--ease);
 }
-/* Tynd blå accent-stribe langs toppen — fader ind ved hover */
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1))::before {
+/* Tynd accent-stribe i FAGETS farve langs toppen — fader ind ved hover */
+[class*="st-key-fagkort"]::before {
   content: "";
   position: absolute; left: 0; right: 0; top: 0; height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-soft));
-  opacity: 0;
+  background: linear-gradient(90deg, var(--kort-accent, var(--accent)), transparent 85%);
+  opacity: 0.45;
   transform: scaleX(0.4);
   transform-origin: left;
   transition: opacity var(--t-base) var(--ease), transform var(--t-base) var(--spring);
   pointer-events: none;
 }
-
-/* Kun KORT der er klikbare (indeholder en page_link) får hover-løft.
-   Det rammer forsidens nav-kort + holder rene info-kort rolige. */
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)):has([data-testid="stPageLink"]) {
-  cursor: pointer;
-  min-height: 168px;            /* ens korthøjde -> ryddeligt 3-kol grid */
-}
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)):has([data-testid="stPageLink"]):hover {
+[class*="st-key-fagkort"]:hover {
   transform: translateY(-3px);
-  border-color: var(--line-accent) !important;
+  border-color: color-mix(in srgb, var(--kort-accent, var(--accent-soft)) 55%, transparent) !important;
   background:
-    linear-gradient(180deg, rgba(59, 130, 246, 0.10), rgba(30, 41, 59, 0.60)),
+    linear-gradient(180deg, rgba(59, 130, 246, 0.08), rgba(30, 41, 59, 0.60)),
     var(--panel-hover);
   box-shadow:
     var(--shadow-lift),
-    0 0 0 1px rgba(96, 165, 250, 0.10),
+    0 0 0 1px color-mix(in srgb, var(--kort-accent, var(--accent-soft)) 14%, transparent),
     var(--inset-top-hi);
 }
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)):has([data-testid="stPageLink"]):hover::before {
+[class*="st-key-fagkort"]:hover::before {
   opacity: 1;
   transform: scaleX(1);
 }
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)):has([data-testid="stPageLink"]):active {
+[class*="st-key-fagkort"]:active {
   transform: translateY(-1px) scale(0.992);
   box-shadow: var(--shadow-soft), var(--inset-top);
   transition-duration: var(--t-fast);
+}
+/* Lille rundt fag-ikon-badge øverst i kortet (HTML fra Hjem.py) */
+.fag-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  font-size: 1.15rem;
+  background: color-mix(in srgb, var(--kort-accent, var(--accent)) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--kort-accent, var(--accent)) 34%, transparent);
+  box-shadow: var(--inset-top);
 }
 
 /* ============================================================
@@ -263,30 +313,30 @@ a[data-testid="stPageLink-NavLink"]:focus-visible {
   box-shadow: var(--focus-ring);
   border-color: var(--line-accent);
 }
-/* page_link inde i et kort = kort-overskrift (titlen styles som heading her,
+/* page_link inde i et fag-kort = kort-overskrift (titlen styles som heading her,
    da Hjem.py ikke længere bruger ## i labelet — det rendrer ikke i nyere Streamlit) */
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)) a[data-testid="stPageLink-NavLink"] {
+[class*="st-key-fagkort"] a[data-testid="stPageLink-NavLink"] {
   border-color: transparent;
   background: transparent;
   padding-left: 0;
   padding-right: 0;
 }
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)) a[data-testid="stPageLink-NavLink"] p {
+[class*="st-key-fagkort"] a[data-testid="stPageLink-NavLink"] p {
   font-size: 1.2rem;
   font-weight: 650;
-  letter-spacing: 0.2px;
+  letter-spacing: -0.01em;
   color: var(--txt-strong);
 }
 /* Kortet er den eneste hover-flade — titel-linket skal ikke have egen boks/skub */
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)) a[data-testid="stPageLink-NavLink"]:hover {
+[class*="st-key-fagkort"] a[data-testid="stPageLink-NavLink"]:hover {
   background: transparent;
   border-color: transparent;
   transform: none;
   box-shadow: none;
 }
-/* Når et helt kort hover'es, lys da overskrifts-linket blåt med */
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)):hover a[data-testid="stPageLink-NavLink"] p {
-  color: var(--accent-soft);
+/* Når et helt kort hover'es, lys da overskrifts-linket i fagets farve */
+[class*="st-key-fagkort"]:hover a[data-testid="stPageLink-NavLink"] p {
+  color: var(--kort-accent, var(--accent-soft));
 }
 
 /* ============================================================
@@ -603,18 +653,22 @@ button[kind="secondary"] { color: var(--txt); }
   transition: box-shadow var(--t-base) var(--ease), transform var(--t-base) var(--ease);
 }
 [data-testid="stAlert"]:hover { box-shadow: var(--shadow-soft), var(--inset-top); }
-/* typede varianter (Streamlit-klasser varierer; attr-fallback) */
-[data-testid="stAlert"]:has(svg[fill="#10b981"]),
+/* typede varianter — 1.58 rendrer stAlertContainer med et indre
+   stAlertContentSuccess/Warning/Error/Info-element */
+[data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]),
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentSuccess"]),
 div[data-baseweb="notification"][kind="positive"] {
   border-left-color: var(--ok);
   background: rgba(16, 185, 129, 0.08);
 }
-[data-testid="stAlert"]:has(svg[fill="#f59e0b"]),
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]),
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]),
 div[data-baseweb="notification"][kind="warning"] {
   border-left-color: var(--warn);
   background: rgba(245, 158, 11, 0.08);
 }
-[data-testid="stAlert"]:has(svg[fill="#ef4444"]),
+[data-testid="stAlert"]:has([data-testid="stAlertContentError"]),
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentError"]),
 div[data-baseweb="notification"][kind="negative"] {
   border-left-color: var(--err);
   background: rgba(239, 68, 68, 0.08);
@@ -655,7 +709,9 @@ div[data-baseweb="notification"][kind="negative"] {
 [data-testid="stExpander"] summary svg { transition: transform var(--t-base) var(--ease); }
 
 /* ============================================================
-   TOOLTIP — (?)-bobler: lille, skarp, høj kontrast
+   TOOLTIP — (?)-bobler: lille, skarp, høj kontrast.
+   Selve (?)-ikonet gøres synligere — det er kerne-UX
+   (191 forklaringsbobler) og var let at overse.
    ============================================================ */
 [data-baseweb="tooltip"] {
   background: #0b1120 !important;
@@ -663,6 +719,16 @@ div[data-baseweb="notification"][kind="negative"] {
   border-radius: 6px !important;
   color: var(--txt) !important;
   font-size: 12px;
+  max-width: 340px;
+  line-height: 1.45;
+}
+[data-testid="stTooltipIcon"] svg {
+  color: var(--txt-muted);
+  transition: color var(--t-fast) var(--ease), transform var(--t-fast) var(--spring);
+}
+[data-testid="stTooltipHoverTarget"]:hover svg {
+  color: var(--accent-soft);
+  transform: scale(1.12);
 }
 
 /* ============================================================
@@ -702,7 +768,7 @@ div[data-baseweb="notification"][kind="negative"] {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
-  [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)):hover,
+  [class*="st-key-fagkort"]:hover,
   [data-testid="stMetric"]:hover,
   .stTabs [data-baseweb="tab"]:hover,
   .stButton > button:hover { transform: none !important; }
@@ -714,10 +780,11 @@ div[data-baseweb="notification"][kind="negative"] {
 @media (max-width: 640px) {
   .block-container,
   [data-testid="stMainBlockContainer"] { padding-top: 1.6rem !important; }
-  [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)):has([data-testid="stPageLink"]) {
+  [class*="st-key-fagkort"] {
     min-height: auto;            /* lad kort krympe naturligt på mobil */
   }
   [data-testid="stHorizontalBlock"] { gap: 0.7rem; }
+  .hero-title { font-size: 1.9rem !important; }
 }
 /* ============================================================
    SIDEBAR — ingen kort-styling på tomme/strukturelle wrappers
@@ -748,19 +815,129 @@ div[data-baseweb="notification"][kind="negative"] {
 }
 
 /* ============================================================
-   HELE KORTET KLIKBART (ikke kun titel-striben)
+   HELE FAG-KORTET KLIKBART (ikke kun titel-striben)
    page_link dækker normalt kun titlen. Vi strækker et usynligt
    link-overlay ud over hele kortet, så et klik hvor som helst
    navigerer. Kortets element-containere sættes static, så overlayet
    (position:absolute; inset:0) regner relativt til selve kortet.
+   Scoped til forsidens fag-kort — andre siders containere med
+   page_links forbliver almindelige (tekst kan markeres/kopieres).
    ============================================================ */
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)) [data-testid="stElementContainer"] {
+[class*="st-key-fagkort"] [data-testid="stElementContainer"] {
   position: static;
 }
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] [data-testid="stPageLink"]):not(:has(h1)) a[data-testid="stPageLink-NavLink"]::after {
+[class*="st-key-fagkort"] a[data-testid="stPageLink-NavLink"]::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
   border-radius: var(--r-md);
+}
+
+/* ============================================================
+   HERO — forsidens hoved (HTML rendres fra Hjem.py)
+   ============================================================ */
+.hero-wrap { padding: 0.6rem 0 0.2rem; }
+.hero-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  margin-bottom: 0.35rem;
+}
+.hero-title {
+  font-family: var(--sans);
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  margin: 0 0 0.4rem;
+  background: linear-gradient(92deg, var(--txt-strong) 20%, var(--accent-soft) 78%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--txt-strong); /* fallback hvis clip-tekst ikke støttes */
+}
+.hero-tag {
+  color: var(--txt-muted);
+  font-size: 0.98rem;
+  max-width: 60ch;
+  margin: 0 0 0.9rem;
+}
+.hero-stats { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.stat-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.38rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(30, 41, 59, 0.45);
+  box-shadow: var(--inset-top);
+  font-size: 0.8rem;
+  color: var(--txt-muted);
+}
+.stat-chip b {
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--txt-strong);
+}
+
+/* Søgefeltet som kommandopalet: større, permanent svag accent-ring */
+.st-key-global_soeg [data-baseweb="input"] {
+  border-color: rgba(96, 165, 250, 0.38) !important;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.10), 0 10px 30px -18px var(--accent-glow), var(--inset-top);
+}
+.st-key-global_soeg input {
+  font-size: 1.06rem !important;
+  padding-top: 0.72rem !important;
+  padding-bottom: 0.72rem !important;
+}
+.st-key-global_soeg input::placeholder { color: rgba(148, 163, 184, 0.75); }
+
+/* Søgeresultater: fag-gruppeoverskrift */
+.soeg-fag-h {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--txt-muted);
+  margin: 0.9rem 0 0.15rem;
+}
+.soeg-fag-h .prik {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: baseline;
+}
+
+/* ============================================================
+   PILLS / SEGMENTED CONTROL — modulvælgere på fagsiderne
+   ============================================================ */
+button[kind="pills"], button[kind="segmented_control"] {
+  border: 1px solid var(--line-strong) !important;
+  background: rgba(30, 41, 59, 0.55) !important;
+  color: var(--txt-muted) !important;
+  border-radius: 999px !important;
+  transition: all var(--t-base) var(--ease);
+}
+button[kind="pills"]:hover, button[kind="segmented_control"]:hover {
+  border-color: var(--line-accent) !important;
+  color: var(--txt-strong) !important;
+  background: var(--accent-fill) !important;
+  transform: translateY(-1px);
+}
+button[kind="pillsActive"], button[kind="segmented_controlActive"] {
+  background: linear-gradient(180deg, var(--accent-soft), var(--accent-deep)) !important;
+  border: 1px solid rgba(96, 165, 250, 0.65) !important;
+  color: #f8fafc !important;
+  border-radius: 999px !important;
+  box-shadow: 0 6px 16px -8px var(--accent-glow), var(--inset-top-hi);
+}
+button[kind="pillsActive"] p, button[kind="segmented_controlActive"] p {
+  color: #f8fafc !important;
+  font-weight: 650;
 }

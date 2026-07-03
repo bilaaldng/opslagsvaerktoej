@@ -358,5 +358,53 @@ EKSTRA_FAKTA = [
  [
   "Told / Duty",
   "Statslig afgift på varer, der importeres over en grænse. Beregnes typisk af varens værdi (toldsats %) ud fra varekode og oprindelsesland; fordyrer importen, og Incoterms afgør hvem der betaler."
+ ],
+ [
+  "Hypotesetest",
+  "Metode til at afgøre, om et mønster i data er reelt eller bare tilfældig variation. Man opstiller H0 (ingen forskel) og H1, beregner en teststørrelse, og forkaster H0, hvis data er usandsynlige nok under den (p < signifikansniveau)."
+ ],
+ [
+  "Nulhypotese (H0)",
+  "Påstanden om 'ingen forskel/effekt', som testen forsøger at vælte — fx H0: μ = 75. Den beholdes, medmindre data taler stærkt imod den; man 'beviser' aldrig H0, man kan kun undlade at forkaste den."
+ ],
+ [
+  "Alternativ hypotese (H1)",
+  "Det, man vil vise — fx μ > 75. Retningen bestemmer testen: H1 med > eller < giver en ensidet test, H1 med ≠ giver en tosidet. H1 sættes ud fra spørgsmålet, FØR man ser på tallene."
+ ],
+ [
+  "p-værdi",
+  "Sandsynligheden for at se data mindst så ekstreme som vores — HVIS H0 er sand. Er p under signifikansniveauet (fx 0,05), forkastes H0. p er IKKE sandsynligheden for, at H0 er sand."
+ ],
+ [
+  "Teststørrelse (z/t)",
+  "Tallet der måler, hvor mange standardfejl stikprøvens gennemsnit ligger fra den påståede værdi: z = (x̄ − μ0)/(σ/√n). Bruges z ved kendt σ/stor stikprøve, t ved ukendt σ og lille n."
+ ],
+ [
+  "Type I-fejl",
+  "At forkaste en sand H0 — en 'falsk alarm', hvor man ser en forskel, der ikke findes. Sandsynligheden er netop signifikansniveauet α (fx 5 %)."
+ ],
+ [
+  "Type II-fejl",
+  "At beholde en falsk H0 — man overser en forskel, der faktisk er der. Sandsynligheden kaldes β. Type I og II trækker mod hinanden; kun et større n sænker begge på én gang."
+ ],
+ [
+  "Kritisk værdi (investering)",
+  "Det punkt, hvor en forudsætning gør NPV præcis nul — grænsen mellem lønsom og ulønsom. Fx kritisk levetid, kritisk omsætning eller kritisk investeringsbeløb. Bruges som følsomhedsanalyse: hvor meget må virkeligheden svigte, før beslutningen vender?"
+ ],
+ [
+  "Gestelands kulturdimensioner",
+  "Fire akser til at forstå forhandlingskulturer: deal-focus vs. relationship-focus (sag før relation eller omvendt), formel vs. uformel, monokron vs. polykron tid (fast vs. flydende tidsopfattelse) og ekspressiv vs. reserveret kommunikation."
+ ],
+ [
+  "CSRD / ESG",
+  "ESG = miljø (Environmental), sociale forhold (Social) og god ledelse (Governance) som grundlag for bæredygtighedsvurdering. CSRD er EU's rapporteringsdirektiv, der forpligter flere virksomheder til at rapportere på ESG — et voksende omgivelsespres på indkøb og leverandørvalg."
+ ],
+ [
+  "Væsentlig misligholdelse (CISG art. 25)",
+  "En misligholdelse, der i det væsentlige berøver den anden part det, han med rimelighed kunne forvente af aftalen — og som var påregnelig. Er tærsklen for at kunne HÆVE købet og for at kræve omlevering."
+ ],
+ [
+  "Anticiperet misligholdelse (CISG art. 71-72)",
+  "Når det står klart, at modparten VIL misligholde væsentligt, kan man reagere før leveringstiden: stille sin egen ydelse i bero (art. 71) eller hæve på forhånd (art. 72). Normalt skal man varsle, så modparten kan stille sikkerhed."
  ]
 ]

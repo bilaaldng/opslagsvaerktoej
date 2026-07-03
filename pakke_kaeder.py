@@ -2542,4 +2542,99 @@ EKSTRA_KAEDER = [{'emne': 'Ansoffs vækstmatrix',
            'fisker': 'Om du ved at for sen reklamation afskærer beføjelserne, uanset at manglen findes.',
            'alt': '',
            'snyd': True,
-           'fakta': True}]}]
+           'fakta': True}]},
+ {'emne': 'Hypotesetest — fuldt flow',
+  'fag': 'Statistik',
+  'lag': [{'sp': 'Hvad er formålet med en hypotesetest, og hvad er H0 og H1?',
+           'arg': 'En hypotesetest afgør, om et mønster i data er reelt eller bare tilfældig variation. '
+                  'H0 (nulhypotesen) er "ingen forskel"-påstanden, fx H0: μ = 75. H1 (alternativet) er '
+                  'det, man vil vise, fx μ > 75. Testen forsøger at vælte H0 ved at vise, at data er '
+                  'usandsynlige, hvis H0 var sand.',
+           'fisker': 'Om du kan opstille H0 og H1 korrekt og forklare at H0 er "ingen effekt".',
+           'alt': '',
+           'snyd': False,
+           'fakta': True},
+          {'sp': 'Spørgsmålet er, om gennemsnittet er OVER 75. Skal du bruge en ensidet eller tosidet test?',
+           'arg': 'Ensidet (højre hale), fordi spørgsmålet kun handler om én retning: er det OVER 75. '
+                  'H1: μ > 75. Havde spørgsmålet været "er det forskelligt fra 75", skulle den være '
+                  'tosidet. Retningen på H1 følger spørgsmålet — ikke tallene.',
+           'fisker': 'Om du sætter halen ud fra spørgsmålets retning, ikke ud fra hvad data tilfældigt viser.',
+           'alt': '',
+           'snyd': False,
+           'fakta': False},
+          {'sp': 'Du får en teststørrelse z = 2,15 og p = 0,016. Betyder p = 0,016, at der er 1,6 % '
+                 'sandsynlighed for, at H0 er sand?',
+           'arg': 'Nej — det er fælden. p-værdien er sandsynligheden for at se data mindst så ekstreme '
+                  'som vores, HVIS H0 er sand. Den siger intet om, hvor sandsynlig H0 selv er. Korrekt: '
+                  'hvis der ingen forskel var, ville vi kun se noget så ekstremt 1,6 % af gangene — så '
+                  'usandsynligt, at vi forkaster H0.',
+           'fisker': 'Om du undgår den klassiske fejlfortolkning: p er P(data givet H0), ikke P(H0 givet data).',
+           'alt': '',
+           'snyd': True,
+           'fakta': False},
+          {'sp': 'z = 2,15 og p = 0,016 på 5%-niveau. Konkludér i ord.',
+           'arg': 'z = 2,15 > den kritiske værdi 1,645, og p = 0,016 < 0,05 → H0 forkastes. Konklusion: '
+                  'gennemsnittet er signifikant større end 75 på 5%-niveau. Bemærk formuleringen "i ord" '
+                  'med både teststørrelse OG p-værdi holdt op mod grænserne — det er dét, censor vil høre.',
+           'fisker': 'Om du kan formulere konklusionen i ord med både z mod kritisk værdi og p mod α.',
+           'alt': '',
+           'snyd': False,
+           'fakta': False}]},
+ {'emne': 'Kritiske værdier i investeringskalkulen',
+  'fag': 'Økonomi',
+  'lag': [{'sp': 'Hvad er en kritisk værdi i en investeringskalkule?',
+           'arg': 'Det er det punkt, hvor en af investeringens forudsætninger gør NPV præcis nul — '
+                  'grænsen mellem lønsom og ulønsom. Man kan regne kritisk levetid, kritisk årlig '
+                  'indbetaling, kritisk investeringsbeløb og kritisk omsætning.',
+           'fisker': 'Om du ved at en kritisk værdi er der hvor NPV = 0.',
+           'alt': '',
+           'snyd': False,
+           'fakta': True},
+          {'sp': 'Hvorfor er de kritiske værdier mere interessante end bare at vide, at NPV er positiv?',
+           'arg': 'Fordi de svarer på "hvad nu hvis?". En positiv NPV siger, at investeringen betaler sig '
+                  'PÅ BUDGETTET. De kritiske værdier viser, hvor meget virkeligheden må afvige, før den '
+                  'ikke gør — altså hvor robust beslutningen er. Det er en følsomhedsanalyse.',
+           'fisker': 'Om du kobler kritiske værdier til følsomhed/robusthed, ikke bare til et tal.',
+           'alt': '',
+           'snyd': False,
+           'fakta': False},
+          {'sp': 'NPV er positiv, så investeringen er da sikker uanset hvad?',
+           'arg': 'Nej — det er fælden. En positiv NPV gælder kun for de FORUDSATTE tal. Ligger den '
+                  'kritiske omsætning tæt på det budgetterede salg, skal der kun et lille svigt til, før '
+                  'NPV bliver negativ. En positiv NPV med lille sikkerhedsmargin er en skrøbelig '
+                  'investering, ikke en sikker.',
+           'fisker': 'Om du ser, at robusthed afhænger af AFSTANDEN ned til den kritiske værdi, ikke bare fortegnet på NPV.',
+           'alt': '',
+           'snyd': True,
+           'fakta': False}]},
+ {'emne': 'Gestelands kulturdimensioner',
+  'fag': 'Kommunikation',
+  'lag': [{'sp': 'Hvad er Gestelands fire kulturdimensioner?',
+           'arg': 'Deal-focus vs. relationship-focus (sag før relation eller omvendt), formel vs. '
+                  'uformel, monokron vs. polykron tidsopfattelse (fast tid vs. flydende tid) og '
+                  'ekspressiv vs. reserveret kommunikationsstil. De hjælper med at forberede en '
+                  'forhandling på tværs af kulturer.',
+           'fisker': 'Om du kan nævne alle fire akser med deres modpoler.',
+           'alt': '',
+           'snyd': False,
+           'fakta': True},
+          {'sp': 'Din modpart er relationship-focused og polykron. Hvordan bør du gribe forhandlingen an?',
+           'arg': 'Byg relation FØR forretning: brug tid på tillid, small talk og personlige møder, og '
+                  'accepter at tidsplaner er mere flydende. At haste direkte til kontrakten (deal-focus) '
+                  'kan virke uhøfligt og skade tilliden. Tålmodighed og relation er investeringen, der '
+                  'gør handlen mulig.',
+           'fisker': 'Om du tilpasser din tilgang til modpartens dimensioner i stedet for din egen stil.',
+           'alt': 'Man kan argumentere for at holde fast i en vis struktur og deadlines alligevel, hvis '
+                  'projektet er tidskritisk — men så skal det pakkes ind relationsmæssigt, ikke '
+                  'præsenteres som et ultimatum.',
+           'snyd': False,
+           'fakta': False},
+          {'sp': 'Modparten siger ikke direkte nej, men bliver vag og udskyder. Så er handlen vel stadig i live?',
+           'arg': 'Ikke nødvendigvis — det er fælden. I mange relationship-focused og reserverede kulturer '
+                  'siger man sjældent nej direkte; vaghed, tavshed og udskydelse KAN være et høfligt nej. '
+                  'Man skal læse mellem linjerne og ikke forveksle fravær af et klart afslag med et ja. '
+                  'Fortolker man det som "stadig åbent", spilder man tid på en død handel.',
+           'fisker': 'Om du ved at indirekte kommunikation kan skjule et nej — man må læse konteksten, ikke kun ordene.',
+           'alt': '',
+           'snyd': True,
+           'fakta': False}]}]

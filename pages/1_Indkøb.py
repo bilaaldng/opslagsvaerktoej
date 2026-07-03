@@ -41,17 +41,31 @@ st.caption(
     "graf og mellemregninger opdateres med det samme."
 )
 
-tab_eoq, tab_poq, tab_rop, tab_abc, tab_fc, tab_review, tab_mvb, tab_lev, tab_strat = st.tabs([
+# --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
+MODULER = [
     "EOQ", "POQ / EPQ", "Genbestilling + SS", "ABC / Pareto",
     "Forecasting", "Review-systemer", "Make-vs-buy / TCO",
     "Leverandørscore", "Strategi & modeller",
-])
+]
+
+# Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
+# lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["indkoeb_modul"] = goto
+elif "indkoeb_modul" not in st.session_state:
+    st.session_state["indkoeb_modul"] = MODULER[0]
+
+modul = st.pills("Vælg modul", MODULER, key="indkoeb_modul",
+                 label_visibility="collapsed")
+if modul is None:          # brugeren har klikket det valgte modul væk
+    modul = MODULER[0]
 
 
 # ===========================================================================
 # EOQ
 # ===========================================================================
-with tab_eoq:
+if modul == "EOQ":
     st.subheader("EOQ — optimal ordrestørrelse")
     st.caption("Den ordrestørrelse hvor bestillings- og lageromkostninger er mindst tilsammen. "
                "Også kaldet **Wilsons formel**. (Mængderabat indgår ikke i Wilson og vurderes separat.)")
@@ -76,7 +90,9 @@ with tab_eoq:
         )
         if h_mode == "Fra pris × lagerrente":
             pris = st.number_input("Enhedspris (kr./stk.)", min_value=0.01,
-                                   value=148.0, step=1.0, key="eoq_pris")
+                                   value=148.0, step=1.0, key="eoq_pris",
+                                   help="Hvad én vare koster i indkøb. Bruges kun til at "
+                                        "beregne H som pris × lagerrente.")
             rente = st.slider(
                 "Lagerrente (%)", 1, 60, 18, key="eoq_rente",
                 help="Lageromkostningen udtrykt som procent af varens værdi pr. år. "
@@ -123,7 +139,7 @@ with tab_eoq:
             xaxis_title="Ordrestørrelse Q (stk.)", yaxis_title="Omkostning (kr./år)",
             height=430, margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.12),
         )
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption(
             "Sådan læser du grafen: den blå totalkurve er summen af de to andre. "
             "Bestillingsomkostningen falder når du bestiller mere ad gangen, mens "
@@ -161,7 +177,7 @@ with tab_eoq:
 # ===========================================================================
 # MAKE-VS-BUY / TCA
 # ===========================================================================
-with tab_mvb:
+elif modul == "Make-vs-buy / TCO":
     st.subheader("Make-vs-buy / Total Cost of Ownership (TCO)")
     st.caption("Sammenlign udlicitering mod egenproduktion på den fulde ejeromkostning "
                "(ikke kun stykpris). Forudfyldt med et eksempel "
@@ -220,7 +236,7 @@ with tab_mvb:
         fig.add_vline(x=vol, line_dash="dot", line_color="#64748b")
         fig.update_layout(xaxis_title="Volumen (stk./år)", yaxis_title="Total omkostning (kr./år)",
                           height=430, margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.12))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption(
             "Sådan læser du grafen: hvor de to linjer krydser (break-even) koster køb og "
             "egenproduktion det samme. Til venstre for krydset er den ene billigst, til højre "
@@ -273,11 +289,11 @@ with tab_mvb:
         with cc1:
             st.markdown("**Køb (udenlandsk leverandør)**")
             buy_e = st.data_editor(buy_df, num_rows="dynamic", hide_index=True,
-                                   use_container_width=True, key="tca_buy")
+                                   width="stretch", key="tca_buy")
         with cc2:
             st.markdown("**Egenproduktion (eget anlæg)**")
             make_e = st.data_editor(make_df, num_rows="dynamic", hide_index=True,
-                                    use_container_width=True, key="tca_make")
+                                    width="stretch", key="tca_make")
 
         tot_buy = pd.to_numeric(buy_e["Beløb (kr./år)"], errors="coerce").sum()
         tot_make = pd.to_numeric(make_e["Beløb (kr./år)"], errors="coerce").sum()
@@ -287,7 +303,7 @@ with tab_mvb:
             y=[tot_buy, tot_make], marker_color=[C_ORDER, C_HOLD],
             text=[kr(tot_buy, 0), kr(tot_make, 0)], textposition="outside"))
         fig.update_layout(yaxis_title="Total cost (kr./år)", height=380, margin=dict(t=40, b=10))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
 
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Total — Køb", kr(tot_buy, 0),
@@ -321,7 +337,7 @@ with tab_mvb:
 # ===========================================================================
 # ABC / PARETO
 # ===========================================================================
-with tab_abc:
+elif modul == "ABC / Pareto":
     st.subheader("ABC / Pareto-analyse")
     st.caption("Sortér varer efter årsværdi (forbrug × pris). A ≤ 80 %, B ≤ 95 %, C > 95 % af akkumuleret værdi.")
     with st.expander("Tommelfingerregler og faldgruber", expanded=False):
@@ -356,8 +372,17 @@ with tab_abc:
                                "C-varer. Træk i skyderen for at flytte grænsen.") / 100
     with cset[0]:
         st.caption("Indtast/ret varer (forbrug og pris):")
-        data = st.data_editor(default_abc, num_rows="dynamic", hide_index=True,
-                              use_container_width=True, key="abc_data", height=240)
+        data = st.data_editor(
+            default_abc, num_rows="dynamic", hide_index=True,
+            width="stretch", key="abc_data", height=240,
+            column_config={
+                "Årligt forbrug": st.column_config.NumberColumn(
+                    "Årligt forbrug", min_value=0,
+                    help="Hvor mange stk. der bruges pr. år. Kan ikke være negativt."),
+                "Enhedspris": st.column_config.NumberColumn(
+                    "Enhedspris", min_value=0.0,
+                    help="Prisen pr. stk. i kroner. Kan ikke være negativ."),
+            })
 
     res = ik.abc_analysis(data, a_cut=a_cut, b_cut=b_cut)
 
@@ -380,7 +405,7 @@ with tab_abc:
             legend=dict(orientation="h", y=1.12),
             xaxis=dict(tickangle=-40),
         )
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption(
             "Sådan læser du grafen: søjlerne (venstre akse) viser hver vares årsværdi, "
             "sorteret fra størst til mindst. Den blå kurve (højre akse) lægger værdierne "
@@ -412,13 +437,13 @@ with tab_abc:
                        "Akkumuleret %", "Kategori"]].copy()
             vis["Årsværdi"] = vis["Årsværdi"].map(lambda v: kr(v, 0))
             vis["Akkumuleret %"] = (res["Akkumuleret %"] * 100).map(lambda v: num(v, 1) + " %")
-            st.dataframe(vis, hide_index=True, use_container_width=True)
+            st.dataframe(vis, hide_index=True, width="stretch")
 
 
 # ===========================================================================
 # GENBESTILLINGSPUNKT + SIKKERHEDSLAGER
 # ===========================================================================
-with tab_rop:
+elif modul == "Genbestilling + SS":
     st.subheader("Genbestillingspunkt (ROP) + sikkerhedslager (SS)")
     st.caption("ROP (\"benzinlampen\") = gns. forbrug i leveringstiden + sikkerhedslager. "
                "SS = z·σ·√L. Ugebaseret.")
@@ -426,13 +451,17 @@ with tab_rop:
     venstre, hoejre = st.columns([1, 2])
     with venstre:
         D = st.number_input("Årligt forbrug D (stk./år)", min_value=1.0,
-                            value=7800.0, step=100.0, key="rop_D")
+                            value=7800.0, step=100.0, key="rop_D",
+                            help="Hvor mange stk. du bruger/sælger på et år. Deles med 52 "
+                                 "for at få det ugentlige forbrug d.")
         sigma = st.number_input("Std.afvigelse σ (stk./uge)", min_value=0.0,
                                 value=11.0, step=0.5, key="rop_sigma",
                                 help="Spredning i ugentligt forbrug. √L ganges på, så det "
                                      "svarer til spredningen i hele leveringstiden (din z·σ-form).")
         L = st.number_input("Ledetid L (uger)", min_value=0.0, value=2.0,
-                            step=0.5, key="rop_L")
+                            step=0.5, key="rop_L",
+                            help="Antal uger fra du bestiller til varerne er fremme. "
+                                 "Jo længere ledetid, jo tidligere skal benzinlampen lyse.")
         z_mode = st.radio("z-værdi", ["Fast tabel", "Frit serviceniveau"],
                           horizontal=True, key="rop_zmode",
                           help="Fast tabel = dine afrundede værdier (90 %=1,28, 95 %=1,65, "
@@ -446,7 +475,9 @@ with tab_rop:
             service = st.slider("Serviceniveau (%)", 50, 99, 95, key="rop_service") / 100
             z = ik.z_from_service(service)
         Q_ord = st.number_input("Ordrestørrelse Q (til graf)", min_value=1.0,
-                                value=520.0, step=20.0, key="rop_Q")
+                                value=520.0, step=20.0, key="rop_Q",
+                                help="Hvor mange stk. du bestiller pr. gang (fx EOQ). Bruges "
+                                     "kun til at tegne savtak-grafen, ikke i ROP-formlen.")
 
     d = D / 52
     ss = ik.safety_stock(z, sigma, L)
@@ -473,7 +504,7 @@ with tab_rop:
                       annotation_text=f"SS = {num(ss,0)}")
         fig.update_layout(xaxis_title="Tid (uger)", yaxis_title="Lagerniveau (stk.)",
                           height=300, margin=dict(t=20, b=10), legend=dict(orientation="h", y=1.2))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
 
         # SS som funktion af serviceniveau
         sl = np.linspace(0.50, 0.999, 200)
@@ -486,7 +517,7 @@ with tab_rop:
                                   text=[f"SS = {num(ss,0)}"], textposition="top center", name="Valgt"))
         fig2.update_layout(xaxis_title="Serviceniveau (%)", yaxis_title="Sikkerhedslager (stk.)",
                            height=230, margin=dict(t=10, b=10), showlegend=False)
-        st.plotly_chart(style_fig(fig2), use_container_width=True)
+        st.plotly_chart(style_fig(fig2), width="stretch")
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("z-værdi", num(z, 3),
@@ -517,7 +548,7 @@ with tab_rop:
 # ===========================================================================
 # POQ / EPQ
 # ===========================================================================
-with tab_poq:
+elif modul == "POQ / EPQ":
     st.subheader("POQ / EPQ — optimal produktionsseriestørrelse")
     st.caption("Brug denne fane når du selv producerer varen i stedet for at købe den. "
                "Den finder den bedste seriestørrelse, altså hvor mange stk. du laver pr. "
@@ -527,9 +558,13 @@ with tab_poq:
     venstre, hoejre = st.columns([1, 2])
     with venstre:
         D = st.number_input("Årlig efterspørgsel D (stk.)", min_value=1.0,
-                            value=48000.0, step=1000.0, key="poq_D")
+                            value=48000.0, step=1000.0, key="poq_D",
+                            help="Hvor mange stk. der skal bruges/sælges på et år. Deles med "
+                                 "antal arbejdsdage for at få det daglige forbrug d.")
         dage = st.number_input("Arbejdsdage/år", min_value=1.0, value=250.0,
-                               step=5.0, key="poq_dage")
+                               step=5.0, key="poq_dage",
+                               help="Antal dage om året hvor der produceres (typisk 250). "
+                                    "Bruges til at regne det daglige forbrug d = D/arbejdsdage.")
         p = st.number_input("Daglig produktionskapacitet p (stk./dag)", min_value=1.0,
                             value=600.0, step=10.0, key="poq_p",
                             help="Hvor mange stk. du kan producere på én arbejdsdag. Skal være "
@@ -538,15 +573,35 @@ with tab_poq:
                             value=850.0, step=50.0, key="poq_S",
                             help="Hvad det koster at starte en ny produktionsserie op "
                                  "(omstilling af maskine, opsætning), uafhængigt af antal.")
-        pris = st.number_input("Produktionspris (kr./stk.)", min_value=0.01,
-                               value=4.20, step=0.10, key="poq_pris")
-        rente = st.slider("Lagerrente (%)", 1, 60, 22, key="poq_rente") / 100
+
+        h_mode = st.radio(
+            "Lageromkostning H", ["Fra pris × lagerrente", "Direkte"],
+            horizontal=True, key="poq_hmode",
+            help="H = hvad det koster at have én vare på lager i ét år. Vælg "
+                 "'Fra pris × lagerrente' for at beregne H som en procent af varens "
+                 "værdi, eller 'Direkte' hvis opgaven allerede giver H i kr.",
+        )
+        if h_mode == "Fra pris × lagerrente":
+            pris = st.number_input("Produktionspris (kr./stk.)", min_value=0.01,
+                                   value=4.20, step=0.10, key="poq_pris",
+                                   help="Hvad det koster at fremstille én vare. Bruges kun til "
+                                        "at beregne H som pris × lagerrente.")
+            rente = st.slider("Lagerrente (%)", 1, 60, 22, key="poq_rente",
+                              help="Lageromkostningen udtrykt som procent af varens værdi pr. år. "
+                                   "Fx 22 % = det koster 22 % af prisen at have varen på lager "
+                                   "i et år.") / 100
+            H = ik.holding_cost_per_unit(pris, rente)
+            st.caption(f"H = {num(pris,2)} × {num(rente*100,0)} % = **{num(H,3)} kr./stk./år**")
+        else:
+            H = st.number_input("Lageromkostning H (kr./stk./år)", min_value=0.001,
+                                value=0.924, step=0.05, format="%.3f", key="poq_H",
+                                help="Lageromkostning pr. enhed pr. år, direkte i kroner.")
+
         Q_cur = st.number_input("Nuværende seriestørrelse (stk.)", min_value=1.0,
                                 value=8000.0, step=500.0, key="poq_Qcur",
                                 help="Hvor mange stk. du laver pr. serie i dag, så du kan se "
                                      "besparelsen ved at skifte til den optimale.")
 
-    H = ik.holding_cost_per_unit(pris, rente)
     d = D / dage
     s = ik.epq_summary(D, S, H, d, p, Q_current=Q_cur)
     q_star = s["POQ"]
@@ -574,7 +629,7 @@ with tab_poq:
             fig.update_layout(xaxis_title="Seriestørrelse Q (stk.)",
                               yaxis_title="Omkostning (kr./år)", height=430,
                               margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.12))
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
         else:
             st.error("p skal være større end daglig efterspørgsel d for at POQ kan beregnes.")
 
@@ -591,8 +646,12 @@ with tab_poq:
 
     with st.expander("Mellemregninger / formel", expanded=True):
         st.latex(r"POQ = \sqrt{\dfrac{2 \cdot D \cdot S}{H \cdot \left(1 - \frac{d}{p}\right)}}")
+        if h_mode == "Fra pris × lagerrente":
+            h_linje = f"- H = {num(pris,2)} × {num(rente*100,0)} % = **{num(H,3)} kr./stk./år**\n"
+        else:
+            h_linje = f"- H (angivet direkte) = **{num(H,3)} kr./stk./år**\n"
         st.markdown(
-            f"- H = {num(pris,2)} × {num(rente*100,0)} % = **{num(H,3)} kr./stk./år**\n"
+            h_linje +
             f"- d = D/arbejdsdage = {num(D,0)}/{num(dage,0)} = **{num(d,1)} stk./dag**\n"
             f"- (1 − d/p) = (1 − {num(d,1)}/{num(p,0)}) = **{num(s['andel_til_lager'],3)}**\n"
             f"- POQ = √(2·{num(D,0)}·{num(S,0)} / ({num(H,3)}·{num(s['andel_til_lager'],3)})) "
@@ -611,7 +670,7 @@ with tab_poq:
 # ===========================================================================
 # FORECASTING
 # ===========================================================================
-with tab_fc:
+elif modul == "Forecasting":
     st.subheader("Forecasting — efterspørgselsprognose")
     st.caption("Glidende gennemsnit og eksponentiel udglatning. Leverer årsforbrug D til "
                "EOQ og gns. forbrug til genbestillingspunktet. Vælg modellen med lavest "
@@ -634,8 +693,15 @@ with tab_fc:
         "Faktisk efterspørgsel": [120, 135, 128, 150, 142, 160, 155, 168, 172, 165, 180, 190],
     })
     with venstre:
-        data_fc = st.data_editor(default_fc, num_rows="dynamic", hide_index=True,
-                                 use_container_width=True, key="fc_data", height=240)
+        data_fc = st.data_editor(
+            default_fc, num_rows="dynamic", hide_index=True,
+            width="stretch", key="fc_data", height=240,
+            column_config={
+                "Faktisk efterspørgsel": st.column_config.NumberColumn(
+                    "Faktisk efterspørgsel", min_value=0,
+                    help="Det faktiske salg/forbrug i perioden (stk.). "
+                         "Kan ikke være negativt."),
+            })
 
     serie = pd.to_numeric(data_fc["Faktisk efterspørgsel"], errors="coerce").dropna().tolist()
 
@@ -660,7 +726,7 @@ with tab_fc:
                                      mode="lines+markers", line=dict(color=C_HOLD, dash="dash")))
             fig.update_layout(xaxis_title="Periode", yaxis_title="Efterspørgsel (stk.)",
                               height=420, margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.12))
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
 
         st.markdown(f"**Sammenlign modellerne** (samme vindue fra periode {start+1}; "
                     "vælg lavest MAD/MAPE, MFE tæt på 0):")
@@ -680,7 +746,7 @@ with tab_fc:
         visc["Tracking signal"] = visc["Tracking signal"].map(lambda v: num(v, 2))
         visc["Næste periode"] = visc["Næste periode"].map(lambda v: num(v, 0) + " stk.")
         st.dataframe(
-            visc, hide_index=True, use_container_width=True,
+            visc, hide_index=True, width="stretch",
             column_config={
                 "MFE (bias)": st.column_config.Column(
                     help="Gennemsnitlig fejl MED fortegn (faktisk − forecast). "
@@ -722,7 +788,7 @@ with tab_fc:
 # ===========================================================================
 # REVIEW-SYSTEMER
 # ===========================================================================
-with tab_review:
+elif modul == "Review-systemer":
     st.subheader("Lagerstyringssystemer (review)")
     st.caption("To systemer for uafhængig efterspørgsel: periodisk review (bestil op til "
                "max-niveau ved faste tjek) og kontinuert review (bestil EOQ når lageret "
@@ -792,6 +858,60 @@ with tab_review:
                 "kan du vente."
             )
 
+    # --- Savtak-graf: de to systemer side om side over tid --------------------
+    horisont = 3 * P + L
+
+    # Periodisk profil: start fyldt op (R), tjek hver P uger, ordren ankommer L senere
+    xs_p, ys_p = [0.0], [float(R_level)]
+    for c in range(1, 4):
+        t_rev = c * P
+        i_rev = ys_p[-1] - d_uge * (t_rev - xs_p[-1])   # beholdning ved tjek
+        q_ny = ik.order_up_to(R_level, i_rev)           # bestil op til R
+        i_foer = i_rev - d_uge * L                      # forbrug mens ordren er undervejs
+        xs_p += [t_rev, t_rev + L, t_rev + L]
+        ys_p += [i_rev, i_foer, i_foer + q_ny]
+
+    # Kontinuert profil: bestil EOQ når lageret rammer ROP; ankomst L senere ved SS
+    top = SS + EOQ_in
+    xs_k, ys_k = [0.0], [float(top)]
+    t = 0.0
+    for _ in range(12):
+        if t >= horisont or d_uge <= 0:
+            break
+        t_rop = t + max(top - rop, 0.0) / d_uge
+        t_ank = t_rop + L
+        xs_k += [t_rop, t_ank, t_ank]
+        ys_k += [rop, SS, top]                          # rop − d·L = SS
+        if t_ank <= t:                                  # værn mod L=0 og top<=ROP
+            break
+        t = t_ank
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=xs_p, y=ys_p, name="Periodisk (bestil op til R)",
+                             line=dict(color=C_ORDER, width=2)))
+    fig.add_trace(go.Scatter(x=xs_k, y=ys_k, name="Kontinuert (bestil EOQ ved ROP)",
+                             line=dict(color=C_HOLD, width=2)))
+    fig.add_hline(y=R_level, line_dash="dash", line_color=C_ORDER,
+                  annotation_text=f"R = {num(R_level,0)}")
+    fig.add_hline(y=rop, line_dash="dash", line_color=C_HOLD,
+                  annotation_text=f"ROP = {num(rop,0)}")
+    fig.add_hline(y=SS, line_dash="dot", line_color=C_OPT,
+                  annotation_text=f"SS = {num(SS,0)}")
+    for c in range(1, 4):
+        fig.add_vline(x=c * P, line_dash="dot", line_color=C_MUTED)
+    fig.update_layout(xaxis_title="Tid (uger)", yaxis_title="Lagerniveau (stk.)",
+                      height=340, margin=dict(t=30, b=10),
+                      legend=dict(orientation="h", y=1.15))
+    st.plotly_chart(style_fig(fig), width="stretch")
+    st.caption(
+        "Sådan læser du grafen: den orange kurve er periodisk review — lageret tjekkes "
+        "ved de grå prikkede streger (hver P uger), og der bestilles op til max-niveauet R; "
+        "varerne ankommer L uger senere. Den grønne kurve er kontinuert review — der "
+        "bestilles en fast mængde (EOQ) hver gang lageret rammer ROP. Læg mærke til at den "
+        "periodiske kurve svinger dybere: den skal kunne dække hele P+L med sikkerhedslageret, "
+        "og derfor kræver periodisk review typisk et større sikkerhedslager."
+    )
+
     st.caption("Periodisk: enkel administration, men kræver større sikkerhedslager (dækker "
                "P+L). Kontinuert: mindre lager, men kræver løbende overvågning.")
 
@@ -799,7 +919,7 @@ with tab_review:
 # ===========================================================================
 # LEVERANDØRSCORE
 # ===========================================================================
-with tab_lev:
+elif modul == "Leverandørscore":
     st.subheader("Leverandørevaluering — vægtet score")
     st.caption("Scor hver leverandør 1-5 på kriterierne, vægt kriterierne, og få en samlet "
                "score. Vægtene normaliseres automatisk.")
@@ -832,8 +952,29 @@ with tab_lev:
         "ESG": [2, 4, 2],
     })
     st.caption("Indtast/ret leverandører og scorer (1 = dårligst, 5 = bedst):")
-    data_lev = st.data_editor(default_lev, num_rows="dynamic", hide_index=True,
-                              use_container_width=True, key="lev_data")
+    data_lev = st.data_editor(
+        default_lev, num_rows="dynamic", hide_index=True,
+        width="stretch", key="lev_data",
+        column_config={
+            k: st.column_config.NumberColumn(
+                k, min_value=1, max_value=5, step=1,
+                help=f"Score for {k}: 1 = dårligst, 5 = bedst.")
+            for k in krit
+        })
+
+    # Advar hvis en leverandør har tomme scorefelter (tæller stille som 0)
+    krit_i_tabel = [k for k in krit if k in data_lev.columns]
+    if not data_lev.empty and krit_i_tabel:
+        score_num = data_lev[krit_i_tabel].apply(
+            lambda c: pd.to_numeric(c, errors="coerce"))
+        mangler = score_num.isna().any(axis=1)
+        if mangler.any():
+            navne = (data_lev.loc[mangler, "Leverandør"]
+                     .fillna("(uden navn)").astype(str).tolist())
+            st.warning(
+                "Tomme scorefelter hos: **" + ", ".join(navne) + "** — en tom "
+                "score tæller som 0 og trækker leverandøren hårdt ned. Udfyld "
+                "felterne eller slet rækken.", icon="⚠️")
 
     total_w = sum(weights.values())
     if total_w > 0 and not data_lev.empty:
@@ -844,7 +985,7 @@ with tab_lev:
             text=res["Samlet score"].map(lambda v: num(v, 2)), textposition="outside"))
         fig.update_layout(yaxis_title="Samlet vægtet score (1-5)", height=360,
                           margin=dict(t=30, b=10), yaxis=dict(range=[0, 5.3]))
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
 
         vind = res.iloc[0]
         st.success(f"Højest score: **{vind['Leverandør']}** ({num(vind['Samlet score'],2)} / 5)",
@@ -855,7 +996,7 @@ with tab_lev:
         with st.expander("Resultattabel", expanded=False):
             visl = res.copy()
             visl["Samlet score"] = visl["Samlet score"].map(lambda v: num(v, 2))
-            st.dataframe(visl, hide_index=True, use_container_width=True)
+            st.dataframe(visl, hide_index=True, width="stretch")
     else:
         st.info("Tilføj mindst én leverandør og sæt mindst én vægt > 0.")
 
@@ -863,7 +1004,7 @@ with tab_lev:
 # ===========================================================================
 # STRATEGI & MODELLER (bibliotek)
 # ===========================================================================
-with tab_strat:
+elif modul == "Strategi & modeller":
     st.subheader("Strategi & modeller — indkøbsbibliotek")
     st.caption("Opslag på de kvalitative indkøbsmodeller. Kraljic-placeringen er interaktiv; "
                "resten er hurtige opslag med forklaring og anvendelse.")
@@ -880,8 +1021,19 @@ with tab_strat:
             "Økonomisk betydning": [2, 4, 2, 5],
             "Forsyningsrisiko": [1, 2, 4, 5],
         })
-        data_k = st.data_editor(default_k, num_rows="dynamic", hide_index=True,
-                                use_container_width=True, key="k_data", height=200)
+        data_k = st.data_editor(
+            default_k, num_rows="dynamic", hide_index=True,
+            width="stretch", key="k_data", height=200,
+            column_config={
+                "Økonomisk betydning": st.column_config.NumberColumn(
+                    "Økonomisk betydning", min_value=1, max_value=5,
+                    help="Hvor meget varen betyder for økonomien, 1-5 "
+                         "(5 = stor betydning). Skala matcher matrixens akser."),
+                "Forsyningsrisiko": st.column_config.NumberColumn(
+                    "Forsyningsrisiko", min_value=1, max_value=5,
+                    help="Hvor svær varen er at skaffe, 1-5 (5 = høj risiko, "
+                         "fx få mulige leverandører)."),
+            })
     with kc2:
         fig = go.Figure()
         # kvadrant-baggrund
@@ -906,7 +1058,7 @@ with tab_strat:
         fig.update_layout(xaxis=dict(title="Forsyningsrisiko", range=[0.5, 5.5]),
                           yaxis=dict(title="Økonomisk betydning", range=[0.5, 5.5]),
                           height=400, margin=dict(t=20, b=10), showlegend=False)
-        st.plotly_chart(style_fig(fig), use_container_width=True)
+        st.plotly_chart(style_fig(fig), width="stretch")
         st.caption(
             "Sådan læser du grafen: hver vare lander i en af de fire kvadranter alt efter "
             "hvor vigtig (op ad) og hvor risikabel (til højre) den er. Kvadrantens navn, "
