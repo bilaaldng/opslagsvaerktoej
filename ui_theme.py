@@ -39,6 +39,7 @@ FAGFARVER = {
     "Organisation":     "#a78bfa",   # violet
     "Kommunikation":    "#fb7185",   # rosa
     "Jura":             "#eab308",   # gylden — vægtskålen
+    "Distribution":     "#fb923c",   # orange — lastbilen
     "Forsvarstræner":   "#e879f9",   # fuchsia — eksamensdagen
 }
 

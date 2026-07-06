@@ -31,11 +31,12 @@ P_ORG = "pages/5_Organisation.py"
 P_KOMM = "pages/6_Kommunikation.py"
 P_FORSVAR = "pages/7_Forsvarstræner.py"
 P_JURA = "pages/8_Jura.py"
+P_DIST = "pages/9_Distribution.py"
 HAR_JURA = os.path.exists(os.path.join(_ROD, P_JURA))
 
 # Sider med modulvælger: forsiden kan deep-linke til et konkret modul ved at
 # sætte st.session_state['goto_modul'] og skifte side (konvention på tværs).
-DEEP_SIDER = {P_INDKOEB, P_PROD}
+DEEP_SIDER = {P_INDKOEB, P_PROD, P_DIST}
 
 # Fag-kort: (ikon, navn, side, modulbeskrivelse)
 FAG = [
@@ -67,6 +68,11 @@ if HAR_JURA:
     FAG.insert(7, ("⚖️", "Jura", P_JURA,
                    "Alle 11 Incoterms 2020 med risiko- og omkostningsovergang · CISG-beføjelser "
                    "og frister · Standardvilkår · Reklamation · Hvem bærer risikoen?"))
+# Distribution (3. semester) — indsættes lige før Forsvarstræner
+FAG.insert(len(FAG) - 1, ("🚚", "Distribution", P_DIST,
+                          "Transportformsvalg · Tyngdepunktsmetoden · Chopras 6 netværk · "
+                          "Lean & QRM · Kanban-beregner · Lager & plukning · "
+                          "Køre-hviletid & vægte · Told & dokumenter · Grøn godstransport"))
 
 # Søgeindeks: (fag, modul, side, ikon, nøgleord, modul-deep-link eller None)
 # Deep-link-feltet er modulnavnet EKSAKT som det står i sidens modulvælger.
@@ -213,6 +219,60 @@ INDEX = [
       "duty", "regn", "regneopgaver", "rigtige svar", "npv", "break-even", "konfidensinterval",
       "eoq", "oee", "nøgletal", "eksaminér mig", "eksaminer", "regnetræner", "forklar selv",
       "feynman", "quiz", "selvrating", "eksaminator borer"], None),
+]
+# Distribution (3. semester) — deep-links til modulvælgeren på siden
+INDEX += [
+    ("Distribution", "Valg af transportform", P_DIST, "🚚",
+     ["transportform", "transportformer", "transportvalg", "vej", "bane", "jernbane",
+      "skib", "søtransport", "søfragt", "luftfragt", "rørledning", "intermodal",
+      "container", "modal split", "omlastning", "transittid", "transportør"],
+     "Transportformsvalg"),
+    ("Distribution", "Tyngdepunktsmetoden (gravity model)", P_DIST, "🚚",
+     ["tyngdepunkt", "tyngdepunktsmetoden", "gravity", "center of gravity",
+      "lagerplacering", "lokalisering", "placering af lager", "koordinater",
+      "transportarbejde", "netværksdesign", "hvor skal lageret ligge"],
+     "Tyngdepunktsmetoden"),
+    ("Distribution", "Distributionsnetværk — Chopras 6 design", P_DIST, "🚚",
+     ["chopra", "distributionsnetværk", "netværksdesign", "drop-shipping",
+      "dropshipping", "in-transit merge", "last-mile", "kundeafhentning",
+      "svartid", "response time", "aggregering", "u-kurve", "antal lagre",
+      "distributionskanal", "e-handel", "ferdows"],
+     "Distributionsnetværk (Chopra)"),
+    ("Distribution", "Lean & QRM", P_DIST, "🚚",
+     ["lean", "qrm", "quick response manufacturing", "muda", "spild", "spildtyper",
+      "kaizen", "jidoka", "vsm", "værdistrøm", "værdistrømsanalyse", "learning to see",
+      "mct", "white space", "qrm-tal", "polca", "ftms", "q-roc", "qrm-celle",
+      "responstidsspiral", "christopher", "agil", "postponement", "reservekapacitet"],
+     "Lean & QRM"),
+    ("Distribution", "Kanban-beregner (antal kort)", P_DIST, "🚚",
+     ["kanban", "kanban-kort", "produktionskort", "flyttekort", "beholder",
+      "beholderstørrelse", "pull", "træksystem", "to-kort", "jit", "just-in-time",
+      "sikkerhedsfaktor"],
+     "Kanban-beregner"),
+    ("Distribution", "Lager & plukning", P_DIST, "🚚",
+     ["lager", "plukning", "pluk", "batch-pluk", "zone-pluk", "wave-pluk",
+      "cluster-pluk", "pick by voice", "pick by light", "rfid", "wms", "tpl",
+      "tredjepartslogistik", "3pl", "cross-dock", "crossdock", "put away", "fifo",
+      "lifo", "konsolidering", "reverse logistics", "fulfilment", "plukkefejl",
+      "marshalling", "kaoslager"],
+     "Lager & plukning"),
+    ("Distribution", "Køre-hviletid & vægtgrænser", P_DIST, "🚚",
+     ["køre-hviletid", "kørehviletid", "køretid", "hviletid", "pause", "ugehvil",
+      "561/2006", "takograf", "tachograf", "fartskriver", "vejpakke", "totalvægt",
+      "vogntogsvægt", "vogntog", "akseltryk", "overlæs", "vægtgrænser", "aksler",
+      "chauffør", "bøde"],
+     "Køre-hviletid & vægte"),
+    ("Distribution", "Told & dokumenter (T1/T2, TIR, remburs)", P_DIST, "🚚",
+     ["told", "t1", "t2", "taric", "toldoplag", "tir", "ata-carnet", "carnet", "wto",
+      "beskyttelsestold", "finanstold", "remburs", "letter of credit", "cad", "cod",
+      "betaling mod dokumenter", "konnossement", "bill of lading", "transit",
+      "fri omsætning", "toldstatus", "gældsbevis", "iou"],
+     "Told & dokumenter"),
+    ("Distribution", "Grøn godstransport (CO2)", P_DIST, "🚚",
+     ["co2", "grøn", "decarbonising", "dekarbonisering", "klima", "tonkm",
+      "slow steaming", "imo", "net-nul", "bæredygtig", "grøn omstilling",
+      "co2-budget", "elektrificering", "modal shift", "70 procent"],
+     "Grøn godstransport"),
 ]
 if HAR_JURA:
     INDEX += [
