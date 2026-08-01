@@ -353,15 +353,27 @@ SCORE_TIP = ("🎓 **Sådan scorer du point:** 1) Nævn reglen med artikel/klaus
              "2) læg sagens fakta ved siden af → 3) argumentér begge veje hvor det er "
              "usikkert → 4) konkludér selv, kort og klart.")
 
-tab_kat, tab_inco, tab_case = st.tabs([
-    "📚 Jurakatalog", "🚢 Incoterms & risikoens overgang", "🧭 Tvist-skabeloner",
-])
+# --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
+MODULER = ["Jurakatalog", "Incoterms & risikoens overgang", "Tvist-skabeloner"]
+
+# Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
+# lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["jura_modul"] = goto
+if "jura_modul" not in st.session_state:
+    st.session_state["jura_modul"] = MODULER[0]
+
+modul = st.pills("Vælg modul", MODULER, key="jura_modul",
+                 label_visibility="collapsed")
+if modul is None:          # brugeren har klikket det valgte modul væk
+    modul = MODULER[0]
 
 
 # ===========================================================================
 # JURAKATALOG (søgbart, samme mønster som Organisations modelkatalog)
 # ===========================================================================
-with tab_kat:
+if modul == "Jurakatalog":
     st.subheader("Jurakatalog")
     st.caption("Slå regler og artikler op. Hvert opslag: **Hvad den siger** (reglen i "
                "hverdagssprog) + **Hvorfor her** (hvornår den rammer, med et eksempel).")
@@ -395,7 +407,7 @@ with tab_kat:
 # ===========================================================================
 # INCOTERMS — tidslinje-figur + kort pr. klausul
 # ===========================================================================
-with tab_inco:
+elif modul == "Incoterms & risikoens overgang":
     st.subheader("Incoterms 2020 — hvor går risikoen over?")
     st.caption("Tidslinjen går fra sælgers lager (venstre) til købers adresse (højre). Den røde "
                "ruder ◆ er **risikoovergangen** — til venstre bærer sælger risikoen (blå), til "
@@ -489,7 +501,7 @@ with tab_inco:
 # ===========================================================================
 # TVIST-SKABELONER — generiske argumentationskæder pr. tvist-type
 # ===========================================================================
-with tab_case:
+elif modul == "Tvist-skabeloner":
     st.subheader("Tvist-skabeloner — sådan griber du en tvist an")
     st.caption("Tre almindelige tvist-typer som færdige argumentationskæder med neutrale "
                "parter. Brug dem som skabelon på din egen opgave: lovgrundlag → fakta → regel "

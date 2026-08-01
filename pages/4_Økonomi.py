@@ -44,16 +44,30 @@ st.title("💰 Økonomi")
 st.caption("Regnemaskiner med live-grafer. Tast ind eller træk i skyderne, så opdateres "
            "graf og mellemregninger med det samme.")
 
-tab_inv, tab_be, tab_kalk, tab_opt, tab_nt, tab_bud = st.tabs([
+# --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
+MODULER = [
     "Investeringskalkule", "Break-even", "Priskalkulation",
     "Prisoptimering", "Nøgletalsanalyse", "Budget",
-])
+]
+
+# Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
+# lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["oeko_modul"] = goto
+if "oeko_modul" not in st.session_state:
+    st.session_state["oeko_modul"] = MODULER[0]
+
+modul = st.pills("Vælg modul", MODULER, key="oeko_modul",
+                 label_visibility="collapsed")
+if modul is None:          # brugeren har klikket det valgte modul væk
+    modul = MODULER[0]
 
 
 # ===========================================================================
 # INVESTERINGSKALKULE
 # ===========================================================================
-with tab_inv:
+if modul == "Investeringskalkule":
     st.subheader("Investeringskalkule — kapitalværdi (NPV) og intern rente (IRR)")
     st.caption("Indtast cashflows (år 0 = investeringen, negativ). NPV-profilen viser, "
                "hvordan kapitalværdien falder med renten og krydser nul ved IRR.")
@@ -205,7 +219,7 @@ with tab_inv:
 # ===========================================================================
 # BREAK-EVEN / NULPUNKT
 # ===========================================================================
-with tab_be:
+elif modul == "Break-even":
     st.subheader("Break-even / nulpunktsanalyse")
     st.caption("Hvor omsætning og totalomkostninger krydser. Under nulpunktet giver det "
                "underskud, over giver det overskud.")
@@ -272,7 +286,7 @@ with tab_be:
 # ===========================================================================
 # PRISKALKULATION
 # ===========================================================================
-with tab_kalk:
+elif modul == "Priskalkulation":
     st.subheader("Priskalkulation")
     st.caption("Tre metoder: bidrag (fremad fra kostpris), fordeling (med andel af faste "
                "omk.), retrograd (baglæns fra markedspris til maks. købspris).")
@@ -360,7 +374,7 @@ with tab_kalk:
 # ===========================================================================
 # PRISOPTIMERING (monopol)
 # ===========================================================================
-with tab_opt:
+elif modul == "Prisoptimering":
     st.subheader("Prisoptimering under monopol")
     st.caption("Find den pris/afsætning der giver størst overskud (totalmetoden), "
                "eller hvor grænseomsætning = grænseomkostning (grænsemetoden).")
@@ -425,7 +439,7 @@ with tab_opt:
 # ===========================================================================
 # NØGLETALSANALYSE
 # ===========================================================================
-with tab_nt:
+elif modul == "Nøgletalsanalyse":
     st.subheader("Nøgletalsanalyse")
     st.caption("Indtast tal fra resultatopgørelse og balance. Ét år (År 1) er nok — udfylder du "
                "også År 2 og År 3, viser værktøjet udviklingen med indekstal og retning, som "
@@ -602,7 +616,7 @@ with tab_nt:
 # ===========================================================================
 # BUDGET (resultatbudget + afskrivning + simpel likviditet)
 # ===========================================================================
-with tab_bud:
+elif modul == "Budget":
     st.subheader("Budget")
     st.caption("Overordnet resultatbudget pr. kvartal, lineær afskrivning og en simpel "
                "likviditetsoversigt. Ret tallene i tabellen, så opdateres alt live.")

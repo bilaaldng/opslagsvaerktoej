@@ -43,16 +43,30 @@ st.caption("Kommunikationsmodellen, kulturforskelle (Gesteland), interessentanal
            "forhandling. Placér interessenter efter magt og interesse, forbered en "
            "forhandling med MDO/LDO pr. emne, og slå begreberne op.")
 
-tab_int, tab_model, tab_gest, tab_forh, tab_bib = st.tabs([
-    "🎯 Interessentanalyse", "📡 Kommunikationsmodellen", "🌍 Gesteland (kultur)",
-    "🤝 Forhandlingsark + ZOPA", "📚 Forhandlingsbibliotek",
-])
+# --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
+MODULER = [
+    "Interessentanalyse", "Kommunikationsmodellen", "Gesteland (kultur)",
+    "Forhandlingsark + ZOPA", "Forhandlingsbibliotek",
+]
+
+# Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
+# lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["komm_modul"] = goto
+if "komm_modul" not in st.session_state:
+    st.session_state["komm_modul"] = MODULER[0]
+
+modul = st.pills("Vælg modul", MODULER, key="komm_modul",
+                 label_visibility="collapsed")
+if modul is None:          # brugeren har klikket det valgte modul væk
+    modul = MODULER[0]
 
 
 # ===========================================================================
 # INTERESSENTANALYSE (power-interest grid)
 # ===========================================================================
-with tab_int:
+if modul == "Interessentanalyse":
     st.subheader("Interessentanalyse (magt-interesse-model)")
     st.caption("Placér hver interessent efter hvor meget **magt** de har (kan de påvirke "
                "projektet?) og hvor stor **interesse** de har (bliver de berørt?). Hver firkant "
@@ -124,7 +138,7 @@ with tab_int:
 # ===========================================================================
 # KOMMUNIKATIONSMODELLEN (afsender → budskab/kanal → modtager, støj + feedback)
 # ===========================================================================
-with tab_model:
+elif modul == "Kommunikationsmodellen":
     st.subheader("Kommunikationsmodellen")
     st.caption("Afsenderen pakker sit budskab ind (indkodning), sender det gennem en kanal, og "
                "modtageren pakker det ud (afkodning). Undervejs kan **støj** forvride budskabet — "
@@ -218,7 +232,7 @@ with tab_model:
 # ===========================================================================
 # GESTELAND — 4 kulturdimensioner + sammenlign to kulturer
 # ===========================================================================
-with tab_gest:
+elif modul == "Gesteland (kultur)":
     st.subheader("Gestelands kulturdimensioner")
     st.caption("En model der beskriver kulturforskelle i forretning på fire dimensioner: er "
                "folk mest til **relationer eller handler**? **Formelle eller afslappede**? "
@@ -317,7 +331,7 @@ with tab_gest:
 # ===========================================================================
 # FORHANDLINGSARK + ZOPA
 # ===========================================================================
-with tab_forh:
+elif modul == "Forhandlingsark + ZOPA":
     st.subheader("Forhandlingsark")
     st.caption("Forbered forhandlingen emne for emne. **Målpunkt (MDO)** er det bedste realistiske "
                "resultat du går efter; **modstandspunkt (LDO)** er din smertegrænse, hvor du hellere "
@@ -497,7 +511,7 @@ with tab_forh:
 # ===========================================================================
 # FORHANDLINGSBIBLIOTEK
 # ===========================================================================
-with tab_bib:
+elif modul == "Forhandlingsbibliotek":
     st.subheader("Forhandlingsbibliotek")
     st.caption("Slå de centrale forhandlingsbegreber op.")
 

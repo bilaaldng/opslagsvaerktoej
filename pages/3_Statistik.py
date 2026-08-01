@@ -87,16 +87,78 @@ def normalitetsvurdering(d: dict) -> None:
     st.markdown(linjer)
 
 
-tab_norm, tab_ki, tab_ht, tab_binom, tab_kk, tab_reg = st.tabs([
+# --- Hjælpere til Hypotesetest (skal ligge før modul-kæden) ---------------
+def ht_graf(vaerdi: float, kritisk: float, sided: str, navn: str = "z", df=None):
+    """Tæthedskurve med rødt kritisk område og markør ved teststørrelsen.
+    Samme mønster som normalfordelings-fanen (style_fig + skravering)."""
+    graense = max(4.0, abs(vaerdi) + 0.8, abs(kritisk) + 0.8)
+    xs = np.linspace(-graense, graense, 500)
+    ys = t_dist.pdf(xs, df) if df is not None else stat.normal_pdf(xs)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=xs, y=ys, line=dict(color=C_TOTAL, width=3), name="Tæthed"))
+    if sided == "tosidet":
+        masker = [xs <= -abs(kritisk), xs >= abs(kritisk)]
+    elif sided == "hoejre":
+        masker = [xs >= kritisk]
+    else:
+        masker = [xs <= kritisk]
+    for i, mask in enumerate(masker):
+        fig.add_trace(go.Scatter(x=xs[mask], y=ys[mask], fill="tozeroy",
+                                 fillcolor="rgba(239,68,68,0.35)", line=dict(width=0),
+                                 name="Kritisk område", showlegend=(i == 0)))
+    fig.add_vline(x=vaerdi, line_dash="dash", line_color=C_OPT,
+                  annotation_text=f"{navn} = {num(vaerdi, 2)}")
+    fig.update_layout(xaxis_title=navn, yaxis_title="Tæthed", height=400,
+                      margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.12))
+    st.plotly_chart(style_fig(fig), width="stretch")
+    st.caption("Sådan læser du grafen: det røde område er det kritiske område — lander den "
+               "stiplede markør (din teststørrelse) derinde, forkastes H0. Det røde areal "
+               "svarer til signifikansniveauet.")
+
+
+def ht_konklusion(navn: str, vaerdi: float, kritisk: float, p: float, alpha: float,
+                  sided: str, forkast: bool, tekst_forkast: str, tekst_behold: str):
+    """Konklusion I ORD, fx:
+    'z = 2,15 > 1,645 og p = 0,016 < 0,05 → gennemsnittet er signifikant over 75'."""
+    if sided == "tosidet":
+        smlg = (f"|{navn}| = {num(abs(vaerdi), 2)} "
+                f"{'>' if abs(vaerdi) > abs(kritisk) else '≤'} {num(abs(kritisk), 3)}")
+    elif sided == "hoejre":
+        smlg = f"{navn} = {num(vaerdi, 2)} {'>' if vaerdi > kritisk else '≤'} {num(kritisk, 3)}"
+    else:
+        smlg = f"{navn} = {num(vaerdi, 2)} {'<' if vaerdi < kritisk else '≥'} {num(kritisk, 3)}"
+    p_del = f"p = {num(p, 3)} {'<' if p < alpha else '≥'} {num(alpha, 2)}"
+    if forkast:
+        st.success(f"**{smlg} og {p_del} → forkast H0:** {tekst_forkast}")
+    else:
+        st.info(f"**{smlg} og {p_del} → H0 kan IKKE forkastes:** {tekst_behold}")
+
+
+
+# --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
+MODULER = [
     "Normalfordeling", "Konfidensinterval", "Hypotesetest",
     "Binomialfordeling", "Kontrolkort", "Regression",
-])
+]
+
+# Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
+# lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["stat_modul"] = goto
+if "stat_modul" not in st.session_state:
+    st.session_state["stat_modul"] = MODULER[0]
+
+modul = st.pills("Vælg modul", MODULER, key="stat_modul",
+                 label_visibility="collapsed")
+if modul is None:          # brugeren har klikket det valgte modul væk
+    modul = MODULER[0]
 
 
 # ===========================================================================
 # NORMALFORDELING
 # ===========================================================================
-with tab_norm:
+if modul == "Normalfordeling":
     st.subheader("Normalfordeling")
     st.caption("Brug denne fane når noget varierer omkring et gennemsnit (fx vægt, højde eller "
                "leveringstid). Du kan regne ud hvor sandsynligt det er at en værdi ligger i et "
@@ -257,7 +319,7 @@ with tab_norm:
 # ===========================================================================
 # KONFIDENSINTERVAL
 # ===========================================================================
-with tab_ki:
+elif modul == "Konfidensinterval":
     st.subheader("Konfidensinterval")
     st.caption("Intervallet der med valgt sikkerhed indeholder den sande værdi. "
                "Smallere ved større stikprøve. Du kan også gå den anden vej og finde "
@@ -479,53 +541,7 @@ with tab_ki:
 # ===========================================================================
 # HYPOTESETEST
 # ===========================================================================
-def ht_graf(vaerdi: float, kritisk: float, sided: str, navn: str = "z", df=None):
-    """Tæthedskurve med rødt kritisk område og markør ved teststørrelsen.
-    Samme mønster som normalfordelings-fanen (style_fig + skravering)."""
-    graense = max(4.0, abs(vaerdi) + 0.8, abs(kritisk) + 0.8)
-    xs = np.linspace(-graense, graense, 500)
-    ys = t_dist.pdf(xs, df) if df is not None else stat.normal_pdf(xs)
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=xs, y=ys, line=dict(color=C_TOTAL, width=3), name="Tæthed"))
-    if sided == "tosidet":
-        masker = [xs <= -abs(kritisk), xs >= abs(kritisk)]
-    elif sided == "hoejre":
-        masker = [xs >= kritisk]
-    else:
-        masker = [xs <= kritisk]
-    for i, mask in enumerate(masker):
-        fig.add_trace(go.Scatter(x=xs[mask], y=ys[mask], fill="tozeroy",
-                                 fillcolor="rgba(239,68,68,0.35)", line=dict(width=0),
-                                 name="Kritisk område", showlegend=(i == 0)))
-    fig.add_vline(x=vaerdi, line_dash="dash", line_color=C_OPT,
-                  annotation_text=f"{navn} = {num(vaerdi, 2)}")
-    fig.update_layout(xaxis_title=navn, yaxis_title="Tæthed", height=400,
-                      margin=dict(t=30, b=10), legend=dict(orientation="h", y=1.12))
-    st.plotly_chart(style_fig(fig), width="stretch")
-    st.caption("Sådan læser du grafen: det røde område er det kritiske område — lander den "
-               "stiplede markør (din teststørrelse) derinde, forkastes H0. Det røde areal "
-               "svarer til signifikansniveauet.")
-
-
-def ht_konklusion(navn: str, vaerdi: float, kritisk: float, p: float, alpha: float,
-                  sided: str, forkast: bool, tekst_forkast: str, tekst_behold: str):
-    """Konklusion I ORD, fx:
-    'z = 2,15 > 1,645 og p = 0,016 < 0,05 → gennemsnittet er signifikant over 75'."""
-    if sided == "tosidet":
-        smlg = (f"|{navn}| = {num(abs(vaerdi), 2)} "
-                f"{'>' if abs(vaerdi) > abs(kritisk) else '≤'} {num(abs(kritisk), 3)}")
-    elif sided == "hoejre":
-        smlg = f"{navn} = {num(vaerdi, 2)} {'>' if vaerdi > kritisk else '≤'} {num(kritisk, 3)}"
-    else:
-        smlg = f"{navn} = {num(vaerdi, 2)} {'<' if vaerdi < kritisk else '≥'} {num(kritisk, 3)}"
-    p_del = f"p = {num(p, 3)} {'<' if p < alpha else '≥'} {num(alpha, 2)}"
-    if forkast:
-        st.success(f"**{smlg} og {p_del} → forkast H0:** {tekst_forkast}")
-    else:
-        st.info(f"**{smlg} og {p_del} → H0 kan IKKE forkastes:** {tekst_behold}")
-
-
-with tab_ht:
+elif modul == "Hypotesetest":
     st.subheader("Hypotesetest")
     st.caption("Test en påstand om et gennemsnit: er det fx SIGNIFIKANT over 75, eller kan "
                "forskellen bare være tilfældighed? H0 er 'ingen forskel'-påstanden, og testen "
@@ -705,7 +721,7 @@ with tab_ht:
 # ===========================================================================
 # BINOMIALFORDELING
 # ===========================================================================
-with tab_binom:
+elif modul == "Binomialfordeling":
     st.subheader("Binomialfordeling")
     st.caption("n uafhængige forsøg, konstant sandsynlighed p, tæl antal succeser X. "
                "Til 'x ud af n'-spørgsmål.")
@@ -802,7 +818,7 @@ with tab_binom:
 # ===========================================================================
 # KONTROLKORT
 # ===========================================================================
-with tab_kk:
+elif modul == "Kontrolkort":
     st.subheader("Kontrolkort (SPC)")
     st.caption("Et kontrolkort tjekker om en proces (fx en produktion) er stabil over tid. Du "
                "indtaster målinger fra flere stikprøver, og værktøjet tegner en øverste og en "
@@ -949,7 +965,7 @@ with tab_kk:
 # ===========================================================================
 # REGRESSION
 # ===========================================================================
-with tab_reg:
+elif modul == "Regression":
     st.subheader("Lineær regression")
     st.caption("Finder den rette linje der passer bedst til en sky af punkter, så du kan se "
                "sammenhængen mellem to tal og forudsige det ene ud fra det andet. Ret punkterne "

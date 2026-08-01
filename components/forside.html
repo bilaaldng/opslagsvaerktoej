@@ -1,0 +1,334 @@
+<meta charset="utf-8">
+<style>
+  :root{ --ink:#e8edf7; --dim:#93a4c4; --line:rgba(148,178,255,.14); }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+  body{color:var(--ink);
+    font-family:"Familjen Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+  /* Galaksen hører til bag overskriften. Den tones ud nedad, så den ikke
+     roder oven i fagkortene — de skal være læsbare, ikke stemningsfulde. */
+  #scene{position:fixed;inset:0;z-index:0;display:block;width:100%;height:100%;
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 42%,transparent 78%);
+    mask-image:linear-gradient(180deg,#000 0%,#000 42%,transparent 78%)}
+  .wrap{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:64px 26px 40px}
+
+  .eyebrow{font-size:12px;letter-spacing:.20em;text-transform:uppercase;color:#8ea6d8;
+    margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .eyebrow::before{content:"";width:26px;height:1px;
+    background:linear-gradient(90deg,#6b8ff5,transparent)}
+  h1{font-size:clamp(42px,7.6vw,80px);line-height:.95;margin:0 0 18px;letter-spacing:-.035em;
+    font-weight:700;background:linear-gradient(96deg,#fff 12%,#a9c2ff 52%,#dcb6ff 92%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{color:var(--dim);max-width:560px;line-height:1.65;font-size:16px;margin:0 0 30px}
+
+  .search{position:relative;max-width:600px;margin-bottom:18px}
+  .search input{width:100%;padding:16px 20px 16px 50px;border-radius:15px;
+    background:rgba(17,25,45,.72);border:1px solid var(--line);color:var(--ink);
+    font-size:15px;font-family:inherit;outline:none;backdrop-filter:blur(14px);
+    transition:border-color .22s,box-shadow .22s}
+  .search input::placeholder{color:#66789d}
+  .search input:focus{border-color:rgba(140,170,255,.55);
+    box-shadow:0 0 0 4px rgba(93,132,255,.13)}
+  .search svg{position:absolute;left:18px;top:50%;transform:translateY(-50%);
+    width:18px;height:18px;stroke:#7186ad;fill:none;stroke-width:2}
+
+  .quick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:48px}
+  .chip{padding:7px 14px;border-radius:999px;border:1px solid var(--line);
+    background:rgba(255,255,255,.035);color:#b9c9e8;font-size:13px;cursor:pointer;
+    transition:.2s;font-family:inherit}
+  .chip:hover{background:rgba(122,160,255,.16);color:#fff;
+    border-color:rgba(140,170,255,.45);transform:translateY(-1px)}
+
+  #traef{margin-bottom:44px}
+  .traef-h{font-size:12.5px;color:#8ea6d8;letter-spacing:.05em;margin:0 0 10px}
+  .traef-r{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:12px;
+    border:1px solid var(--line);background:rgba(16,24,44,.7);margin-bottom:7px;
+    cursor:pointer;transition:.18s}
+  .traef-r:hover{background:rgba(122,160,255,.14);border-color:rgba(140,170,255,.4);
+    transform:translateX(3px)}
+  .traef-r .prik{width:7px;height:7px;border-radius:50%;flex:none}
+  .traef-r b{font-weight:600;font-size:14.5px}
+  .traef-r span{color:#7b8db0;font-size:12.5px;margin-left:auto}
+  .tom{color:#7b8db0;font-size:14px;padding:12px 2px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:16px;
+    perspective:1300px}
+  .card{position:relative;padding:24px 22px 26px;border-radius:19px;
+    background:linear-gradient(160deg,rgba(21,30,54,.97),rgba(11,16,31,.95));
+    backdrop-filter:blur(6px);
+    border:1px solid var(--line);cursor:pointer;overflow:hidden;
+    transform-style:preserve-3d;
+    transition:transform .16s ease-out,border-color .3s,box-shadow .3s}
+  .card::before{content:"";position:absolute;inset:0;opacity:0;transition:opacity .35s;
+    background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),
+      color-mix(in srgb,var(--ac) 24%,transparent),transparent 62%)}
+  .card:hover::before{opacity:1}
+  .card:hover{border-color:color-mix(in srgb,var(--ac) 52%,transparent);
+    box-shadow:0 22px 52px -20px color-mix(in srgb,var(--ac) 60%,transparent)}
+  .card>*{position:relative;transform:translateZ(26px)}
+  .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
+    margin-bottom:15px;background:color-mix(in srgb,var(--ac) 15%,transparent);
+    border:1px solid color-mix(in srgb,var(--ac) 32%,transparent)}
+  .ic svg{width:20px;height:20px;stroke:var(--ac);fill:none;stroke-width:1.9;
+    stroke-linecap:round;stroke-linejoin:round}
+  .card h3{margin:0 0 7px;font-size:17px;letter-spacing:-.012em;font-weight:600}
+  .card p{margin:0;font-size:13px;line-height:1.6;color:#8b9dbe}
+  .n{position:absolute;top:19px;right:21px;font-size:11px;color:#5d6f92;
+    font-variant-numeric:tabular-nums;transform:translateZ(18px)}
+
+  @media (prefers-reduced-motion:reduce){ .card,.traef-r{transition:none} }
+</style>
+
+<canvas id="scene"></canvas>
+<div class="wrap">
+  <div class="eyebrow">Logistikøkonom · __ANTAL_FAG__ fag · __ANTAL_MODULER__ opslag</div>
+  <h1>Opslagsværktøj</h1>
+  <p class="tag">Tast tal ind, få svaret med det samme, og se mellemregningerne
+     du kan skrive direkte ind i opgaven. Korrekthed frem for alt.</p>
+
+  <div class="search">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" placeholder="Søg — fx EOQ, hypotesetest, Kraljic, DDP, ZOPA …"
+           autocomplete="off" spellcheck="false">
+  </div>
+  <div class="quick" id="quick"></div>
+
+  <div id="traef"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const FAG = __FAG__;
+const INDEKS = __INDEKS__;
+
+/* ---------- 1) Rammen sætter sin egen højde -------------------------------
+   Streamlit giver rammen en fast højde. Vi kan nå den udefra fordi
+   allow-same-origin er sat, så vi retter den selv efter indholdet.        */
+function saetHoejde(){
+  try {
+    const h = document.querySelector(".wrap").scrollHeight + 40;
+    if (window.frameElement) window.frameElement.style.height = h + "px";
+  } catch(e) {}
+}
+
+/* ---------- 2) Navigation --------------------------------------------------
+   Rammen må IKKE selv navigere (sandkassen mangler allow-top-navigation).
+   Men vi kan finde Streamlits eget link i den omgivende side og klikke det. */
+function gaaTil(slug){
+  try {
+    const links = [...window.parent.document.querySelectorAll('a[href]')];
+    const maal = links.find(a => {
+      const h = decodeURIComponent(a.getAttribute("href") || "");
+      return h === slug || h.endsWith("/" + slug);
+    });
+    if (maal) { maal.click(); return true; }
+  } catch(e) {}
+  return false;
+}
+
+/* Deep-link helt ind i et modul: den omgivende side har en skjult
+   Streamlit-knap pr. opslag. Vi klikker den, og Python sætter goto_modul
+   og skifter side. Falder tilbage til bare at åbne fagsiden.            */
+function hopTil(hop, slug){
+  if (hop !== null && hop !== undefined){
+    try {
+      const k = window.parent.document.querySelector(`.st-key-hop_${hop} button`);
+      if (k){ k.click(); return true; }
+    } catch(e) {}
+  }
+  return gaaTil(slug);
+}
+
+/* ---------- 3) Kortene ---------------------------------------------------- */
+const grid = document.getElementById("grid");
+grid.innerHTML = FAG.map((f,i) => `
+  <article class="card" data-slug="${f.slug}" style="--ac:${f.farve}">
+    <span class="n">${String(i+1).padStart(2,"0")}</span>
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="${f.ikon}"/></svg></div>
+    <h3>${f.navn}</h3><p>${f.beskrivelse}</p>
+  </article>`).join("");
+
+document.querySelectorAll(".card").forEach(el => {
+  el.addEventListener("mousemove", e => {
+    const r = el.getBoundingClientRect(), x = e.clientX-r.left, y = e.clientY-r.top;
+    el.style.setProperty("--mx", x+"px"); el.style.setProperty("--my", y+"px");
+    el.style.transform =
+      `rotateY(${(x/r.width-.5)*11}deg) rotateX(${-(y/r.height-.5)*11}deg) translateY(-4px)`;
+  });
+  el.addEventListener("mouseleave", () => el.style.transform = "");
+  el.addEventListener("click", () => gaaTil(el.dataset.slug));
+});
+
+/* ---------- 4) Søgning i browseren (ingen server-rundtur) ----------------- */
+const fold = s => s.toLowerCase()
+  .replace(/æ/g,"ae").replace(/ø/g,"oe").replace(/å/g,"aa").replace(/é/g,"e");
+const q = document.getElementById("q"), boks = document.getElementById("traef");
+
+/* Redigeringsafstand — så "kraljik" stadig rammer "kraljic". */
+function naer(a, b){
+  if (Math.abs(a.length - b.length) > 2) return 99;
+  const d = Array.from({length: a.length+1}, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i-1][j]+1, d[i][j-1]+1,
+                         d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+
+function soeg(tekst){
+  const ord = fold(tekst).split(/\s+/).filter(Boolean);
+  if (!ord.length) return [];
+  const traef = (streng) => {
+    const res = [];
+    for (const e of INDEKS){
+      const hoe = fold(e.fag + " " + e.modul + " " + e.ord);
+      const ordliste = hoe.split(/[\s·/(),.]+/).filter(Boolean);
+      let p = 0, alle = true;
+      for (const o of ord){
+        if (hoe.includes(o)){
+          p += 4 + (fold(e.modul).startsWith(o) ? 16 : 0)
+                 + (ordliste.includes(o) ? 22 : 0);
+        } else if (streng){ alle = false; break; }
+        else {
+          // tolerant: tillad små stavefejl mod hvert enkelt ord
+          const bedst = Math.min(...ordliste.map(w => naer(o, w)));
+          if (bedst <= (o.length >= 6 ? 2 : 1)) p += 8 - bedst * 2;
+          else { alle = false; break; }
+        }
+      }
+      if (alle) res.push({e, p});
+    }
+    return res.sort((a, b) => b.p - a.p);
+  };
+  const streng = traef(true);
+  return streng.length ? streng : traef(false);
+}
+
+function tegnTraef(){
+  const t = q.value.trim();
+  if (!t){ boks.innerHTML = ""; grid.style.display = "grid"; saetHoejde(); return; }
+  const r = soeg(t).slice(0, 12);
+  grid.style.display = r.length ? "none" : "grid";
+  boks.innerHTML = r.length
+    ? `<p class="traef-h">${r.length} træf — klik for at gå direkte til modulet</p>`
+      + r.map(({e}) => `
+        <div class="traef-r" data-slug="${e.slug}" data-hop="${e.hop ?? ""}">
+          <span class="prik" style="background:${e.farve}"></span>
+          <b>${e.modul}</b><span>${e.fag}</span>
+        </div>`).join("")
+    : `<p class="tom">Intet matchede "${t}". Prøv fx "lager", "rente" eller "kultur".</p>`;
+  boks.querySelectorAll(".traef-r").forEach(el =>
+    el.addEventListener("click", () => {
+      const h = el.dataset.hop;
+      hopTil(h === "" ? null : Number(h), el.dataset.slug);
+    }));
+  saetHoejde();
+}
+q.addEventListener("input", tegnTraef);
+
+const GENVEJE = ["EOQ","NPV","Hypotesetest","MRP","Kraljic","ZOPA"];
+document.getElementById("quick").innerHTML =
+  GENVEJE.map(g => `<button class="chip">${g}</button>`).join("");
+document.querySelectorAll(".chip").forEach(c =>
+  c.addEventListener("click", () => { q.value = c.textContent; tegnTraef(); q.focus(); }));
+
+/* ---------- 5) 3D-baggrunden ---------------------------------------------
+   three.js kan ikke importeres direkte i en srcdoc-ramme (ingen adresse at
+   opløse relative stier mod). fetch() virker. Så: hent begge filer, giv
+   kernen en blob-adresse, og skriv skallens henvisning om til den.        */
+async function hentThree(){
+  const B = "/app/static/vendor/";
+  const [kerne, skal] = await Promise.all([
+    fetch(B+"three.core.min.js").then(r => r.text()),
+    fetch(B+"three.module.min.js").then(r => r.text()),
+  ]);
+  const kURL = URL.createObjectURL(new Blob([kerne], {type:"text/javascript"}));
+  const rettet = skal.replace(/["']\.\/three\.core\.min\.js["']/g, JSON.stringify(kURL));
+  return import(URL.createObjectURL(new Blob([rettet], {type:"text/javascript"})));
+}
+
+(async () => {
+  saetHoejde();
+  const let_bevaegelse = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let THREE;
+  try { THREE = await hentThree(); }
+  catch(e){ document.body.style.background =
+    "radial-gradient(1200px 700px at 20% 0%, #171e3a 0%, #070b16 60%)"; return; }
+
+  const cv = document.getElementById("scene");
+  const r = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const sc = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(62, 1, .1, 200);
+  cam.position.z = 26;
+
+  // Partikelsky farvet af fagfarverne — hvert fag "bor" i sit eget område.
+  const PR_FAG = 620, N = FAG.length * PR_FAG;
+  const pos = new Float32Array(N*3), col = new Float32Array(N*3), fart = new Float32Array(N);
+  FAG.forEach((f, fi) => {
+    const c = new THREE.Color(f.farve);
+    const vinkel = (fi / FAG.length) * Math.PI * 2;
+    for (let i = 0; i < PR_FAG; i++){
+      const k = fi*PR_FAG + i;
+      const rad = 7 + Math.pow(Math.random(), .7) * 17;
+      const spred = vinkel + (Math.random()-.5) * 1.15 + rad * .055;
+      pos[k*3]   = Math.cos(spred) * rad + (Math.random()-.5) * 2.4;
+      pos[k*3+1] = (Math.random()-.5) * 6.5 * (1 - rad/30);
+      pos[k*3+2] = Math.sin(spred) * rad + (Math.random()-.5) * 2.4;
+      const m = c.clone().lerp(new THREE.Color("#dce7ff"), Math.random()*.55);
+      col[k*3] = m.r; col[k*3+1] = m.g; col[k*3+2] = m.b;
+      fart[k] = .4 + Math.random()*.8;
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const galakse = new THREE.Points(g, new THREE.PointsMaterial({
+    size:.13, vertexColors:true, transparent:true, opacity:.85,
+    blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true}));
+  sc.add(galakse);
+
+  // Fjerne stjerner som dybdelag
+  const SN = 1400, sp = new Float32Array(SN*3);
+  for (let i = 0; i < SN; i++){
+    sp[i*3] = (Math.random()-.5)*180; sp[i*3+1] = (Math.random()-.5)*120;
+    sp[i*3+2] = -30 - Math.random()*90;
+  }
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+  sc.add(new THREE.Points(sg, new THREE.PointsMaterial({
+    size:.32, color:0xbfd2ff, transparent:true, opacity:.55, depthWrite:false})));
+
+  function stoerrelse(){
+    const w = innerWidth, h = innerHeight;
+    cam.aspect = w/h; cam.updateProjectionMatrix(); r.setSize(w, h, false);
+  }
+  stoerrelse(); addEventListener("resize", () => { stoerrelse(); saetHoejde(); });
+
+  let mx = 0, my = 0, tx = 0, ty = 0;
+  addEventListener("mousemove", e => {
+    tx = (e.clientX/innerWidth - .5); ty = (e.clientY/innerHeight - .5);
+  });
+
+  galakse.rotation.x = .42;
+  (function loop(){
+    if (!let_bevaegelse){
+      galakse.rotation.y += .00085;
+      mx += (tx - mx) * .045; my += (ty - my) * .045;
+      cam.position.x = mx * 7; cam.position.y = -my * 4.5 + 4;
+      cam.lookAt(0, 0, 0);
+    }
+    r.render(sc, cam);
+    requestAnimationFrame(loop);
+  })();
+
+  // Pause når fanen ikke er synlig — sparer batteri på telefon og laptop.
+  document.addEventListener("visibilitychange", () => {
+    r.setAnimationLoop(document.hidden ? null : undefined);
+  });
+})();
+
+new ResizeObserver(saetHoejde).observe(document.querySelector(".wrap"));
+</script>

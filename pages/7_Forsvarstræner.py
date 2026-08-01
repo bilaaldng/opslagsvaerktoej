@@ -977,14 +977,30 @@ st.warning(
     "Ren fakta (fx hvad DDP betyder) er fundamentet under begge dele."
 )
 
-tab_ex, tab_fj, tab_drill, tab_arg, tab_feyn, tab_regn, tab_fakta, tab_sim = st.tabs([
-    "🎲 Eksaminér mig", "🪤 Fælde-jagt", "🎤 Eksaminator borer", "⚖️ Argumentér selv",
-    "🗣️ Forklar selv", "🔢 Regn", "🧠 Faktatjek", "⏱️ Prøveeksamen",
-])
+# --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
+# Vigtigt her: med tabs blev ALLE otte træningstilstande beregnet ved hvert
+# klik. Nu køres kun den valgte.
+MODULER = [
+    "Eksaminér mig", "Fælde-jagt", "Eksaminator borer", "Argumentér selv",
+    "Forklar selv", "Regn", "Faktatjek", "Prøveeksamen",
+]
+
+# Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
+# lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["forsvar_modul"] = goto
+if "forsvar_modul" not in st.session_state:
+    st.session_state["forsvar_modul"] = MODULER[0]
+
+modul = st.pills("Vælg træningstilstand", MODULER, key="forsvar_modul",
+                 label_visibility="collapsed")
+if modul is None:          # brugeren har klikket det valgte modul væk
+    modul = MODULER[0]
 
 
 # --- Eksaminér mig (interleaved, tilfældigt, aktiv genkaldelse + selvrating) ---
-with tab_ex:
+if modul == "Eksaminér mig":
     st.subheader("Eksaminér mig — tilfældigt på tværs af det hele")
     st.caption("Spørgsmål trækkes tilfældigt fra HELE værktøjet — nu også alle de dybe lag og "
                "fælderne fra 'Eksaminator borer'. Sig/tænk dit svar FØR du folder ud — det er "
@@ -1019,7 +1035,7 @@ with tab_ex:
 
 
 # --- Fælde-jagt (kun snydespørgsmål) ----------------------------------------
-with tab_fj:
+elif modul == "Fælde-jagt":
     st.subheader("Fælde-jagt — kun snydespørgsmålene")
     st.caption(f"{len(FAELDE_IDS)} spørgsmål, hvor det intuitive svar er en fælde — præcis dem "
                "eksaminator elsker. Quick-fire: sig dit svar højt, afslør så fælden, og vær "
@@ -1039,7 +1055,7 @@ with tab_fj:
 
 
 # --- Dybde-drill -----------------------------------------------------------
-with tab_drill:
+elif modul == "Eksaminator borer":
     st.subheader("Eksaminator borer dybere")
     st.caption("Vælg et emne. Læs spørgsmålet, formulér dit svar højt eller i hovedet, fold så "
                "“Sådan kan du argumentere” ud — og tryk **Bor dybere** for næste, sværere lag. "
@@ -1089,7 +1105,7 @@ with tab_drill:
 
 
 # --- Argumentér selv -------------------------------------------------------
-with tab_arg:
+elif modul == "Argumentér selv":
     st.subheader("Argumentér selv — “det afhænger”")
     st.caption("Samme situation kan forsvares flere veje. Træk en case, **vælg din position og "
                "lås den** — først derefter ser du, hvordan positionerne kan forsvares. Det "
@@ -1133,7 +1149,7 @@ with tab_arg:
 
 
 # --- Forklar selv (Feynman) ------------------------------------------------
-with tab_feyn:
+elif modul == "Forklar selv":
     st.subheader("Forklar selv (Feynman)")
     st.caption("Forklar begrebet i helt enkle ord, som om modparten aldrig har hørt om det. "
                "Kan du ikke forklare det simpelt, ved du det ikke endnu. Sammenlign så med "
@@ -1153,7 +1169,7 @@ with tab_feyn:
 
 
 # --- Regn (auto-træning + gennemregnede eksempler) -------------------------
-with tab_regn:
+elif modul == "Regn":
     st.subheader("Regn — her ER der et rigtigt svar")
     mode = st.radio("Tilstand", ["🎯 Træn med nye tal (auto)", "📖 Gennemgå eksempler"],
                     key="regn_mode", horizontal=True)
@@ -1258,7 +1274,7 @@ with tab_regn:
 
 
 # --- Faktatjek (flashcards med fag og kunne/svær-bunker) --------------------
-with tab_fakta:
+elif modul == "Faktatjek":
     st.subheader("Faktatjek")
     st.caption("Det her ER fakta — fundamentet du argumenterer ovenpå. Forsiden er begrebet; "
                "vend kortet for definitionen. Markér kunne/svær, så de svære samler sig i en "
@@ -1309,7 +1325,7 @@ with tab_fakta:
 
 
 # --- Prøveeksamen -----------------------------------------------------------
-with tab_sim:
+elif modul == "Prøveeksamen":
     st.subheader("Prøveeksamen — 10 spørgsmål på tid")
 
     if not ss.get("sim_qs"):

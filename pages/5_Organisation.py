@@ -230,15 +230,27 @@ SCORE_TIP = ("🎓 **Sådan scorer du point:** 1) Navngiv modellen og definér d
              "2) anvend den på casens konkrete situation og tal → 3) nævn kritikken/"
              "begrænsningen → 4) konkludér med DIN egen vurdering.")
 
-tab_vaelger, tab_katalog, tab_vis = st.tabs([
-    "🎯 Modelvælger", "📚 Modelkatalog", "📈 Ansoff & ledergitter",
-])
+# --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
+MODULER = ["Modelvælger", "Modelkatalog", "Ansoff & ledergitter"]
+
+# Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
+# lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
+goto = st.session_state.pop("goto_modul", None)
+if goto in MODULER:
+    st.session_state["org_modul"] = goto
+if "org_modul" not in st.session_state:
+    st.session_state["org_modul"] = MODULER[0]
+
+modul = st.pills("Vælg modul", MODULER, key="org_modul",
+                 label_visibility="collapsed")
+if modul is None:          # brugeren har klikket det valgte modul væk
+    modul = MODULER[0]
 
 
 # ===========================================================================
 # MODELVÆLGER
 # ===========================================================================
-with tab_vaelger:
+if modul == "Modelvælger":
     st.subheader("Modelvælger")
     st.caption("Vælg den eller de situationer din case handler om, så foreslår værktøjet de "
                "modeller der passer. Det er netop modelvalget der giver point til eksamen.")
@@ -263,7 +275,7 @@ with tab_vaelger:
 # ===========================================================================
 # MODELKATALOG
 # ===========================================================================
-with tab_katalog:
+elif modul == "Modelkatalog":
     st.subheader("Modelkatalog")
     st.caption("Slå hver model op med hvad den er, hvornår man bruger den, og dens "
                "begrænsninger (kritikken giver point til eksamen).")
@@ -298,7 +310,7 @@ with tab_katalog:
 # ===========================================================================
 # ANSOFF & LEDERGITTER — interaktive kvadrant-figurer
 # ===========================================================================
-with tab_vis:
+elif modul == "Ansoff & ledergitter":
     st.subheader("Ansoffs vækstmatrix — placér casens tiltag")
     st.caption("Skriv casens vækst-tiltag i tabellen og vælg, om produktet og markedet er nyt "
                "eller eksisterende — så lander tiltaget i den rigtige kvadrant. Til eksamen: "
