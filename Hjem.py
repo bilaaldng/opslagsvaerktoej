@@ -34,6 +34,8 @@ P_KOMM = "pages/6_Kommunikation.py"
 P_FORSVAR = "pages/7_Forsvarstræner.py"
 P_JURA = "pages/8_Jura.py"
 P_DIST = "pages/9_Distribution.py"
+P_ORDBOG = "pages/10_Ordbog.py"
+P_PROJ = "pages/11_Projektstyring.py"
 HAR_JURA = os.path.exists(os.path.join(_ROD, P_JURA))
 
 # Sider med modulvælger: forsiden kan deep-linke til et konkret modul ved at
@@ -75,6 +77,15 @@ FAG.insert(len(FAG) - 1, ("🚚", "Distribution", P_DIST,
                           "Transportformsvalg · Tyngdepunktsmetoden · Chopras 6 netværk · "
                           "Lean & QRM · Kanban-beregner · Lager & plukning · "
                           "Køre-hviletid & vægte · Told & dokumenter · Grøn godstransport"))
+# Projektstyring (3. semester, 4 ECTS af den tværfaglige prøve) — samme plads
+FAG.insert(len(FAG) - 1, ("📋", "Projektstyring", P_PROJ,
+                          "Projekt eller drift · Kendt & ukendt · De fire processer · "
+                          "Projektorganisationen · Projektlederen · Projektmodeller · "
+                          "Scrum & Kanban · De fem i balance · Personprofiler"))
+# Ordbogen er ikke et fag — den samler begreberne på tværs, så den ligger sidst.
+FAG.append(("📖", "Ordbog", P_ORDBOG,
+            "131 begreber på tværs af fagene · 47 af dem lever i flere fag · "
+            "hvert begreb linker direkte til det modul der underviser i det"))
 
 def gaa_til(side: str, modul: str | None) -> None:
     """Naviger til en fagside — evt. direkte til et modul (deep-link).

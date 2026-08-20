@@ -37,6 +37,8 @@ IKONER = {
     "Jura": "M12 3v18M5 7h14M7 7l-3 7h6zM17 7l-3 7h6z",
     "Distribution": "M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 19h.01M18 19h.01",
     "Forsvarstræner": "M22 9L12 4 2 9l10 5zM6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5",
+    "Projektstyring": "M3 4h18v16H3zM9 4v16M15 4v16M5 8h2M11 8h2M17 8h2",
+    "Ordbog": "M12 6v14M12 6c-2-1.5-4.5-2-8-2v14c3.5 0 6 .5 8 2M12 6c2-1.5 4.5-2 8-2v14c-3.5 0-6 .5-8 2",
 }
 
 _HER = os.path.dirname(os.path.abspath(__file__))
@@ -73,6 +75,6 @@ def vis_forside(fag: list, opslag: list, hoejde: int = 1180) -> None:
     html = (_laes("forside.html")
             .replace("__FAG__", json.dumps(kort, ensure_ascii=False))
             .replace("__INDEKS__", json.dumps(idx, ensure_ascii=False))
-            .replace("__ANTAL_FAG__", str(len(fag)))
+            .replace("__ANTAL_SIDER__", str(len(fag)))
             .replace("__ANTAL_MODULER__", str(len(opslag))))
     components.html(html, height=hoejde, scrolling=False)
