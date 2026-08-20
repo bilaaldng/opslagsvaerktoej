@@ -31,7 +31,9 @@ SIDER = [
     ("Kommunikation", "pages/6_Kommunikation.py"),
     ("Distribution", "pages/9_Distribution.py"),
     ("Jura", "pages/8_Jura.py"),
+    ("Projektstyring", "pages/11_Projektstyring.py"),
     ("Forsvarstræner", "pages/7_Forsvarstræner.py"),
+    ("Ordbog", "pages/10_Ordbog.py"),
 ]
 
 # Ekstra søgeord pr. modul — det man taster i stedet for det officielle navn.
@@ -86,6 +88,15 @@ NOEGLEORD = {
     ("Distribution", "Køre-hviletid & vægte"): ["køretid", "hviletid", "pause", "takograf", "fartskriver", "totalvægt", "vogntog", "akseltryk", "overlæs", "chauffør"],
     ("Distribution", "Told & dokumenter"): ["told", "t1", "t2", "taric", "tir", "ata-carnet", "remburs", "letter of credit", "konnossement", "bill of lading", "transit"],
     ("Distribution", "Grøn godstransport"): ["co2", "grøn", "klima", "tonkm", "slow steaming", "imo", "bæredygtig", "modal shift"],
+    ("Projektstyring", "Projekt eller drift"): ["kendetegn", "drift", "engangsopgave", "tidsbegrænset", "tværfagligt", "afgrænset"],
+    ("Projektstyring", "Kendt & ukendt"): ["prejekt", "matrix", "rutineprojekt", "planlægningsgrad"],
+    ("Projektstyring", "De fire processer"): ["opstart", "planlægning", "gennemførelse", "afslutning", "logbog", "evaluering", "mandat"],
+    ("Projektstyring", "Projektorganisationen"): ["styregruppe", "opdragsgiver", "referencegruppe", "projektgruppe", "instruktionsbeføjelse", "to chefer"],
+    ("Projektstyring", "Projektlederen"): ["teamleder", "integrator", "koordinator", "kotter", "leadership", "management"],
+    ("Projektstyring", "Projektmodeller"): ["vandfald", "agil", "blandet", "iterativ", "tilbageløb", "time to market"],
+    ("Projektstyring", "Scrum & Kanban"): ["scrum", "sprint", "backlog", "produktejer", "scrum master", "retrospektiv", "review", "increment", "wip"],
+    ("Projektstyring", "De fem i balance"): ["balance", "fremdrift", "produktkvalitet", "omgivelser", "arbejdsgruppe"],
+    ("Projektstyring", "Personprofiler"): ["disc", "adizes", "paei", "belbin", "teamrolle", "afslutter", "gruppedannelse"],
     ("Jura", "Jurakatalog"): ["cisg", "købelov", "reklamation", "frist", "misligholdelse", "ophævelse", "erstatning", "standardvilkår", "lovvalg", "værneting"],
     ("Jura", "Incoterms & risikoens overgang"): ["incoterms", "risikoovergang", "leveringsbetingelse", "fragt", "forsikring"],
     ("Jura", "Tvist-skabeloner"): ["tvist", "argumentationskæde", "konflikt", "uenighed"],
@@ -104,6 +115,10 @@ UDEN_MODULER = {
     "Værdikædeanalyse": (["vca", "værdikæde", "porter", "støtteaktiviteter",
                           "primære aktiviteter", "logistik ind", "logistik ud",
                           "analyse ikke løsning"], "Sådan bygger du en VCA"),
+    # Ordbogen har ingen modulvælger — dens "moduler" er begreberne selv, og
+    # de kommer ind som lag 3 herunder.
+    "Ordbog": (["ordbog", "begreb", "definition", "på tværs", "tværfaglig"],
+               "Alle begreber på tværs af fagene"),
 }
 
 
@@ -174,6 +189,19 @@ def byg_indeks() -> list:
         ud.append(("Jura", titel, "pages/8_Jura.py",
                    "Incoterms & risikoens overgang",
                    post.get("soeg", []) + [kode.lower(), "incoterms"]))
+
+    # --- lag 3: ordbogens begreber ----------------------------------------
+    # Ordbogen er et rent datamodul (ingen Streamlit), så den importeres
+    # direkte i stedet for at blive læst med AST som fagsiderne.
+    # Fagnavnene ryger med som nøgleord, så en søgning på "lean" også finder
+    # ordbogsopslaget — ikke kun Distributions modul med samme ord i titlen.
+    from data.ordbog import BEGREBER
+    for b in BEGREBER:
+        ord_ = list(b.get("soeg", [])) + [f.lower() for f in b["fag"]] + ["begreb"]
+        if b.get("engelsk"):
+            ord_.append(b["engelsk"].lower())
+        ud.append(("Ordbog", b["begreb"], "pages/10_Ordbog.py",
+                   b["begreb"], ord_))
     return ud
 
 

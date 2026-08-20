@@ -27,6 +27,10 @@ from pakke_spoergsmaal import KONCEPT  # noqa: E402
 from pakke_kaeder import EKSTRA_KAEDER  # noqa: E402
 from pakke_argumenter import EKSTRA_ARGUMENTER  # noqa: E402
 from pakke_fakta import EKSTRA_FAKTA  # noqa: E402
+from pakke_3sem import (KONCEPT_3SEM, KAEDER_3SEM,  # noqa: E402
+                        ARGUMENTER_3SEM)
+from pakke_kobling import KOBLINGER, VALG  # noqa: E402
+from pakke_paastande import PAASTANDE  # noqa: E402
 import regnegen  # noqa: E402
 
 st.set_page_config(page_title="Forsvarstræner", page_icon="🎓", layout="wide")
@@ -277,7 +281,7 @@ KÆDER = [
     },
 ]
 # Læg de mange censur-verificerede dybde-kæder oven på de oprindelige (ingen fjernes).
-KÆDER = KÆDER + EKSTRA_KAEDER
+KÆDER = KÆDER + EKSTRA_KAEDER + KAEDER_3SEM
 
 # Argumentér-selv: samme situation kan forsvares flere veje. Pointen er argumentet.
 ARGUMENTER = [
@@ -352,7 +356,7 @@ ARGUMENTER = [
     },
 ]
 # Mange flere fler-forsvarlige cases oven på de oprindelige (ingen fjernes).
-ARGUMENTER = ARGUMENTER + EKSTRA_ARGUMENTER
+ARGUMENTER = ARGUMENTER + EKSTRA_ARGUMENTER + ARGUMENTER_3SEM
 
 # Faktatjek: det der ER fakta og skal sidde fast — fundamentet du argumenterer ovenpå.
 FAKTA = [
@@ -398,7 +402,10 @@ FAKTA = FAKTA + EKSTRA_FAKTA
 # fag (appens 7 sider + Jura), så fag-filteret aldrig gemmer spørgsmål væk.
 # Den oprindelige mærkat vises som undertag, fx 'Indkøb · Logistik'.
 KANONISKE_FAG = ["Værdikæde", "Indkøb", "Produktion", "Statistik", "Økonomi",
-                 "Organisation", "Kommunikation", "Jura"]
+                 "Organisation", "Kommunikation", "Jura",
+                 # 3. semester: prøvens egne fag. Manglede før, så Distribution
+                 # og Projektstyring faldt bagest som "ukendte" i fagfiltret.
+                 "Distribution", "Projektstyring"]
 FAG_MAP = {
     "Strategi": "Organisation",
     "Ledelse": "Organisation",
@@ -573,6 +580,11 @@ FAKTA_FAG = _fag_liste(k["fag"] for k in FAKTA_KORT)
 # ===========================================================================
 # SAMLET POOL til "Eksaminér mig" (interleaved på tværs af alt)
 # ===========================================================================
+# 3. semesters spørgsmål lægges OVEN PÅ den oprindelige bank (ingen fjernes).
+# De bærer fagene "Distribution" og "Projektstyring", som nu også er
+# kanoniske — før faldt de bagest i fagfiltret som ukendte.
+KONCEPT = KONCEPT + KONCEPT_3SEM
+
 KONCEPT_EMNER = {q["emne"].strip().lower() for q in KONCEPT}
 
 
@@ -644,6 +656,33 @@ PROGRESS_FIL = os.path.join(_ROD, "data", "forsvar_progress.json")
 _TOM_SCORE = {"rigtige": 0, "forkerte": 0, "streak": 0, "bedste": 0}
 
 
+# --- Fælles svaghedsprofil på tværs af tilstandene -------------------------
+# Før havde hver tilstand sin egen svær-kø, og de talte ikke sammen: en
+# svaghed fundet i Regn dukkede aldrig op i Eksaminér mig. Her samles de i
+# ÉN profil pr. fag+emne, som alle tilstande skriver til og læser fra.
+# Det forudsætter ordbogens fag-lister, fordi et emne kan høre til flere fag.
+
+def _notér_svaghed(fag, emne: str) -> None:
+    """Registrér at noget var svært. `fag` må være en streng eller en liste —
+    et emne kan høre til flere fag, og så tæller det i dem alle."""
+    if not emne:
+        return
+    prof = ss.setdefault("svagheder", {})
+    for f in ([fag] if isinstance(fag, str) else list(fag)) or ["Øvrigt"]:
+        prof[f"{f} :: {emne}"] = prof.get(f"{f} :: {emne}", 0) + 1
+    _save_progress()
+
+
+def _svagheds_top(n: int = 8) -> list:
+    """De emner der oftest er gået galt — (fag, emne, antal), værst først."""
+    prof = ss.get("svagheder", {})
+    rækker = []
+    for nøgle, antal in prof.items():
+        fag, _, emne = nøgle.partition(" :: ")
+        rækker.append((fag, emne, antal))
+    return sorted(rækker, key=lambda r: (-r[2], r[0], r[1]))[:n]
+
+
 def _save_progress():
     """Atomisk skrivning (temp + rename) — en afbrudt gemning ødelægger aldrig filen."""
     data = {
@@ -652,6 +691,7 @@ def _save_progress():
                   if str(k).startswith("drill_n_") and isinstance(ss[k], int)},
         "fakta_svaere": sorted(ss.get("fk_svaere", set())),
         "regn_score": ss.get("rt_score", dict(_TOM_SCORE)),
+        "svagheder": ss.get("svagheder", {}),
     }
     try:
         os.makedirs(os.path.dirname(PROGRESS_FIL), exist_ok=True)
@@ -682,15 +722,20 @@ def _load_progress():
                 ss[f"drill_n_{emne}"] = max(1, min(n, len(kaede["lag"])))
         rs = data.get("regn_score") or {}
         ss.rt_score = {k: max(0, int(rs.get(k, 0))) for k in _TOM_SCORE}
+        sv = data.get("svagheder") or {}
+        ss.svagheder = {str(k): int(v) for k, v in sv.items()
+                        if isinstance(v, (int, float)) and int(v) > 0}
     except (TypeError, ValueError):
         ss.ex_svaere = set()
         ss.fk_svaere = set()
         ss.rt_score = dict(_TOM_SCORE)
+        ss.svagheder = {}
 
 
 def _nulstil_fremskridt():
     ss.ex_svaere = set()
     ss.fk_svaere = set()
+    ss.svagheder = {}
     ss.rt_score = dict(_TOM_SCORE)
     for k in [k for k in ss if str(k).startswith("drill_n_")]:
         ss[k] = 1
@@ -939,6 +984,39 @@ var iv=setInterval(function(){n--;if(n<=0){clearInterval(iv);s.textContent='0';b
 """
 
 
+def _timer_html(sekunder: int, tekst: str, slut_tekst: str) -> str:
+    """Samme nedtælling, men med valgfri varighed.
+
+    Prøveeksamen kører 30 sekunder pr. spørgsmål. Det rigtige forsvar er 30
+    sammenhængende MINUTTER fordelt på faser, så uret skal kunne sættes til
+    andet end 30 sekunder. Viser mm:ss når der er mere end et minut igen.
+    """
+    return f"""
+<div id="t" style="font:600 14px -apple-system,Segoe UI,sans-serif;color:#cbd5e1">⏱️ {tekst} — <span id="s"></span></div>
+<div style="height:8px;background:#1e293b;border-radius:6px;overflow:hidden;margin-top:5px">
+ <div id="b" style="height:100%;width:100%;background:#3b82f6;transition:width 1s linear"></div></div>
+<script>
+(function(){{
+  var total={int(sekunder)}, n=total;
+  var s=document.getElementById('s'), b=document.getElementById('b'), t=document.getElementById('t');
+  function vis(v){{
+    if (v>=60) {{ var m=Math.floor(v/60), r=v%60; return m+':'+(r<10?'0':'')+r; }}
+    return v+'s';
+  }}
+  s.textContent=vis(n);
+  var iv=setInterval(function(){{
+    n--;
+    if(n<=0){{ clearInterval(iv); s.textContent='0s'; b.style.width='0%';
+               b.style.background='#ef4444';
+               t.innerHTML='⏱️ {slut_tekst}'; }}
+    else {{ s.textContent=vis(n); b.style.width=(n/total*100)+'%';
+            if(n<=Math.max(10, total*0.15)) b.style.background='#f59e0b'; }}
+  }},1000);
+}})();
+</script>
+"""
+
+
 def _vis_pool_kort(p, vist, vis_svar_cb, kunne_cb, svaer_cb, ns):
     """Fælles kort-rendering for Eksaminér mig og Fælde-jagt (samme flow)."""
     with st.container(border=True):
@@ -982,7 +1060,9 @@ st.warning(
 # klik. Nu køres kun den valgte.
 MODULER = [
     "Eksaminér mig", "Fælde-jagt", "Eksaminator borer", "Argumentér selv",
-    "Forklar selv", "Regn", "Faktatjek", "Prøveeksamen",
+    "Kobl fagene", "Forsvar dit valg", "Hold påstanden op",
+    "Forklar selv", "Regn", "Faktatjek", "Prøveeksamen", "30-min forsvaret",
+    "Hvor står jeg",
 ]
 
 # Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
@@ -1375,6 +1455,320 @@ elif modul == "Prøveeksamen":
                                width="stretch", key="sim_ok")
                     sc2.button("🔁 Svær — igen senere", on_click=_sim_svar, args=(False,),
                                width="stretch", key="sim_sv")
+
+
+# ===========================================================================
+# KOBL FAGENE — den tilstand prøveformen decideret kalder på
+# ===========================================================================
+elif modul == "Kobl fagene":
+    st.subheader("Kobl fagene — spørgsmål der ikke kan besvares fra ét fag")
+    st.caption(
+        "Prøven er tværfaglig: fire fag afgøres i én prøve, og casen kræver, "
+        "at transportansvar og projektstyring kobles på det samme flow som "
+        "Lean, Chopra og lagerdesign. Her er situationer, hvor ét fag ikke "
+        "rækker. Sig dit svar højt, FØR du folder modelsvaret ud — og læg "
+        "mærke til, om du selv kom hele vejen rundt.")
+
+    if "kob_i" not in ss:
+        ss.kob_i = 0
+        ss.kob_vist = False
+
+    def _kob_næste():
+        ss.kob_i = (ss.kob_i + 1) % len(KOBLINGER)
+        ss.kob_vist = False
+
+    def _kob_tilfældig():
+        ss.kob_i = random.randrange(len(KOBLINGER))
+        ss.kob_vist = False
+
+    situation, fag, spørgsmål, svar = KOBLINGER[ss.kob_i]
+
+    with st.container(border=True):
+        st.markdown(" · ".join(f"`{f}`" for f in fag))
+        st.markdown(f"### {situation}")
+        st.markdown("**Eksaminator spørger:**")
+        for s in spørgsmål:
+            st.markdown(f"- {s}")
+
+        if not ss.kob_vist:
+            st.caption(f"💭 Svar højt. Mindst **{len(fag)} fag** skal med, "
+                       "før svaret er helt.")
+            st.button("Vis hvordan koblingen hænger sammen",
+                      on_click=lambda: ss.update(kob_vist=True),
+                      type="primary", key="kob_vis")
+        else:
+            st.success(svar)
+            k1, k2, k3 = st.columns(3)
+            k1.button("✅ Jeg fik alle fag med", on_click=_kob_næste,
+                      width="stretch", key="kob_ok")
+
+            def _kob_svær():
+                for f in fag:
+                    _notér_svaghed(f, "Tværfaglig kobling")
+                _kob_næste()
+
+            k2.button("🔁 Jeg manglede et fag", on_click=_kob_svær,
+                      width="stretch", key="kob_sv")
+            k3.button("🎲 Tilfældig", on_click=_kob_tilfældig,
+                      width="stretch", key="kob_rnd")
+
+    st.caption(f"Kort {ss.kob_i + 1} af {len(KOBLINGER)}")
+
+
+# ===========================================================================
+# FORSVAR DIT VALG — du forsvarer din EGEN rapport, ikke pensum
+# ===========================================================================
+elif modul == "Forsvar dit valg":
+    st.subheader("Forsvar dit valg — «hvorfor ikke det modsatte?»")
+    st.caption(
+        "Til det mundtlige forsvarer du **din egen rapport**, ikke pensum. "
+        "Den klassiske åbning er «du valgte X — hvorfor ikke Y?». Kortene "
+        "træner formen: vælg position, begrund den, anerkend afvejningen "
+        "ærligt, og hold fast. Det svageste svar er at benægte ulempen.")
+
+    if "vlg_i" not in ss:
+        ss.vlg_i = 0
+        ss.vlg_vist = False
+
+    def _vlg_næste():
+        ss.vlg_i = (ss.vlg_i + 1) % len(VALG)
+        ss.vlg_vist = False
+
+    valg, alternativ, modspørgsmål, forsvar = VALG[ss.vlg_i]
+
+    with st.container(border=True):
+        st.markdown(f"### {valg}")
+        st.markdown(f"Eksaminator: *«Hvorfor ikke {alternativ}?»*")
+        for m in modspørgsmål:
+            st.markdown(f"- {m}")
+
+        if not ss.vlg_vist:
+            st.caption("💭 Svar højt. Husk de fire trin: position → "
+                       "begrundelse → anerkend prisen → hvad ville ændre din "
+                       "anbefaling.")
+            st.button("Vis et stærkt forsvar",
+                      on_click=lambda: ss.update(vlg_vist=True),
+                      type="primary", key="vlg_vis")
+        else:
+            st.success(forsvar)
+            v1, v2 = st.columns(2)
+            v1.button("✅ Mit svar holdt", on_click=_vlg_næste,
+                      width="stretch", key="vlg_ok")
+
+            def _vlg_svær():
+                _notér_svaghed("Projektstyring", "Forsvar af eget valg")
+                _vlg_næste()
+
+            v2.button("🔁 Jeg vaklede", on_click=_vlg_svær,
+                      width="stretch", key="vlg_sv")
+
+    st.caption(f"Kort {ss.vlg_i + 1} af {len(VALG)}")
+
+
+# ===========================================================================
+# HOLD PÅSTANDEN OP — kildekritik, semestrets kerne
+# ===========================================================================
+elif modul == "Hold påstanden op":
+    st.subheader("Hold påstanden op — holder den, eller gør den ikke?")
+    st.caption(
+        "Semestret er bygget på kritisk tænkning, og fagets eget AI-oplæg "
+        "lærer at fange en hallucination, før den ender i afleveringen. "
+        "Herunder står en påstand. **Nogle er rigtige.** Døm først — så "
+        "afsløres det, om der var plantet en fejl, og hvilken type.")
+
+    if "pst_raek" not in ss:
+        ss.pst_raek = random.sample(range(len(PAASTANDE)), len(PAASTANDE))
+        ss.pst_pos = 0
+        ss.pst_valg = None
+
+    def _pst_næste():
+        ss.pst_pos = (ss.pst_pos + 1) % len(ss.pst_raek)
+        ss.pst_valg = None
+
+    def _pst_dom(holder: bool):
+        ss.pst_valg = holder
+
+    idx = ss.pst_raek[ss.pst_pos]
+    påstand, holder, fejltype, forklaring, p_fag = PAASTANDE[idx]
+
+    with st.container(border=True):
+        st.markdown(f"`{p_fag}`")
+        st.markdown(f"### «{påstand}»")
+
+        if ss.pst_valg is None:
+            st.caption("💭 Fire spørgsmål til enhver påstand: Hvad bygger den "
+                       "på? Er tallet efterprøveligt? Er årsag og virkning "
+                       "byttet om? Bruges modellen inden for sit "
+                       "gyldighedsområde?")
+            d1, d2 = st.columns(2)
+            d1.button("✅ Den holder", on_click=_pst_dom, args=(True,),
+                      width="stretch", key="pst_ja")
+            d2.button("❌ Der er noget galt", on_click=_pst_dom, args=(False,),
+                      width="stretch", key="pst_nej")
+        else:
+            rigtigt = (ss.pst_valg == holder)
+            if rigtigt:
+                st.success("Rigtigt vurderet.")
+            else:
+                st.error("Ikke helt — læs hvorfor.")
+                _notér_svaghed(p_fag, "Kildekritik")
+
+            if not holder:
+                st.markdown(f"**Fejltype:** {fejltype}")
+            st.info(forklaring)
+            st.button("Næste påstand →", on_click=_pst_næste, type="primary",
+                      key="pst_n")
+
+    st.caption(f"Påstand {ss.pst_pos + 1} af {len(PAASTANDE)} · "
+               f"{sum(1 for p in PAASTANDE if p[1])} af dem er korrekte")
+
+
+# ===========================================================================
+# 30-MIN FORSVARET — generalprøven i prøvens faktiske form
+# ===========================================================================
+elif modul == "30-min forsvaret":
+    st.subheader("30-minutters forsvaret — generalprøven")
+    st.caption(
+        "Prøveeksamen træner hurtig genkaldelse: 10 spørgsmål à 30 sekunder, "
+        "cirka fem minutter i alt. Det rigtige forsvar er **30 "
+        "sammenhængende minutter** over én case. Det er en anden disciplin — "
+        "her er udholdenhed og struktur det svære, ikke paratviden.")
+
+    FASER = [
+        ("Præsentation", 5,
+         "Fortæl om din løsning uden at læse op. Hvad var problemet, hvad "
+         "valgte du, og hvorfor?",
+         ["Hold dig til hovedlinjen — detaljerne kommer i uddybningen.",
+          "Sig konklusionen først, ikke til sidst.",
+          "Nævn selv den vigtigste afvejning, du har truffet."]),
+        ("Uddybning", 10,
+         "Eksaminator borer i det, du lige sagde. Regn med, at det svageste "
+         "led i din præsentation er dét, der spørges til.",
+         ["Har du regnet noget, så kend både formlen og fortolkningen.",
+          "«Det afhænger af…» er et godt svar — hvis du siger hvad.",
+          "Ved du det ikke, så sig det, og sig hvordan du ville finde ud af det."]),
+        ("Tværfaglig kobling", 10,
+         "Nu skal fagene bindes sammen. Casen er tværfaglig, og det er her, "
+         "karakteren adskiller sig.",
+         ["Kobl mindst to fag i hvert svar — flowet, jura'en, projektet, økonomien.",
+          "Brug 'Kobl fagene'-tilstanden til at træne netop det.",
+          "Peg selv på sammenhænge, eksaminator ikke har spurgt til."]),
+        ("Kritisk indvending", 5,
+         "«Hvorfor ikke det modsatte?» Til sidst presses din anbefaling.",
+         ["Anerkend ulempen ærligt — benægtelse er det svageste svar.",
+          "Sig hvad der skulle ændre sig, for at du ville vælge om.",
+          "Hold fast i din position, når begrundelsen stadig holder."]),
+    ]
+
+    if "fs_fase" not in ss:
+        ss.fs_fase = -1          # -1 = ikke startet
+
+    def _fs_start():
+        ss.fs_fase = 0
+
+    def _fs_næste():
+        ss.fs_fase += 1
+
+    def _fs_stop():
+        ss.fs_fase = -1
+
+    if ss.fs_fase < 0:
+        st.markdown(
+            "| Fase | Tid | Hvad der sker |\n|---|---|---|\n"
+            + "\n".join(f"| **{n}** | {m} min | {b} |"
+                        for n, m, b, _ in FASER))
+        st.info("Find din egen case eller rapport frem, og sig svarene **højt**. "
+                "Uret kører i browseren, så det påvirkes ikke af, at siden "
+                "genindlæser.")
+        st.button("▶️ Start forsvaret", on_click=_fs_start, type="primary")
+    elif ss.fs_fase >= len(FASER):
+        st.markdown("### Forsvaret er slut 🎓")
+        st.caption("Tag stilling til det med det samme, mens det er friskt.")
+        for navn, _m, _b, _r in FASER:
+            st.checkbox(f"«{navn}» gik fint", key=f"fs_ok_{navn}")
+        svage = [n for n, _m, _b, _r in FASER if not ss.get(f"fs_ok_{n}")]
+
+        def _fs_gem():
+            for n in svage:
+                _notér_svaghed("Projektstyring", f"Forsvar: {n}")
+            _fs_stop()
+
+        if svage:
+            st.warning("Du markerede ikke: " + " · ".join(svage))
+        st.button("Gem i svaghedsprofilen og afslut", on_click=_fs_gem,
+                  type="primary")
+    else:
+        navn, minutter, brief, råd = FASER[ss.fs_fase]
+        st.markdown(f"### Fase {ss.fs_fase + 1} af {len(FASER)} · {navn}")
+        components.html(
+            _timer_html(minutter * 60, f"{navn} ({minutter} min)",
+                        f"{navn} er slut — gå videre til næste fase."),
+            height=60)
+        st.markdown(brief)
+        with st.expander("Hvad eksaminator lytter efter"):
+            for r in råd:
+                st.markdown(f"- {r}")
+        f1, f2 = st.columns(2)
+        f1.button("Næste fase →", on_click=_fs_næste, type="primary",
+                  width="stretch", key="fs_n")
+        f2.button("Afbryd", on_click=_fs_stop, width="stretch", key="fs_stop")
+
+
+# ===========================================================================
+# HVOR STÅR JEG — dækningskort + fælles svaghedsprofil
+# ===========================================================================
+elif modul == "Hvor står jeg":
+    st.subheader("Hvor står jeg")
+    st.caption(
+        "Ærlig status, ikke opmuntring. Prøven afgør 20 ECTS på én gang — "
+        "Distribution (7), SCM (5), transportjura (4) og projektstyring (4) — "
+        "så et fag der er tyndt dækket her, er også tyndt dækket til "
+        "eksamen.")
+
+    st.markdown("#### Dine svageste emner på tværs af alle tilstande")
+    top = _svagheds_top(10)
+    if not top:
+        st.info("Endnu ingen registrerede svagheder. De samler sig, når du "
+                "markerer noget som svært i træningstilstandene — og de "
+                "tælles nu på tværs, så en svaghed fundet i Regn også dukker "
+                "op i de andre tilstande.")
+    else:
+        for fag, emne, antal in top:
+            st.markdown(f"- **{emne}** · `{fag}` — gået galt {antal} "
+                        f"{'gang' if antal == 1 else 'gange'}")
+        st.caption("Start næste session dér, hvor listen er længst.")
+
+    st.markdown("#### Dækning pr. fag i prøven")
+    _dæk = {}
+    for _p in POOL:
+        for _f in ([_p["fag"]] if isinstance(_p.get("fag"), str) else _p.get("fag", [])):
+            _dæk[_f] = _dæk.get(_f, 0) + 1
+    for _k in KOBLINGER:
+        for _f in _k[1]:
+            _dæk[_f] = _dæk.get(_f, 0) + 1
+
+    # Prøvens fire fag, ikke værktøjets sider. SCM undervises ikke som ét
+    # fag i værktøjet — stoffet ligger spredt i Indkøb og Produktion, så de
+    # tælles sammen her.
+    PRØVEFAG = [
+        ("Distribution", 7, ["Distribution"]),
+        ("Supply Chain Management", 5, ["Indkøb", "Produktion"]),
+        ("Transportjura", 4, ["Jura"]),
+        ("Projektstyring", 4, ["Projektstyring"]),
+    ]
+    _maks = max((sum(_dæk.get(k, 0) for k in kilder)
+                 for _n, _e, kilder in PRØVEFAG), default=1) or 1
+    for navn, ects, kilder in PRØVEFAG:
+        antal = sum(_dæk.get(k, 0) for k in kilder)
+        pr_ects = antal / ects if ects else 0
+        st.markdown(f"**{navn}** · {ects} ECTS — {antal} spørgsmål "
+                    f"({pr_ects:.1f}".replace(".", ",") + " pr. ECTS)")
+        st.progress(min(1.0, antal / _maks))
+    st.caption(
+        "Søjlerne er antal spørgsmål i banken pr. fag — ikke din kunnen. Er "
+        "en søjle kort, er det **værktøjet** der mangler stof, ikke dig. "
+        "Kolonnen «pr. ECTS» er den ærlige: den viser, om dækningen står mål "
+        "med, hvor meget faget vejer til prøven.")
 
 
 st.divider()

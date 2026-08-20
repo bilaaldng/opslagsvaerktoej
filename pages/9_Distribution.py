@@ -45,7 +45,8 @@ st.caption(
 MODULER = [
     "Transportformsvalg", "Tyngdepunktsmetoden", "Distributionsnetværk (Chopra)",
     "Lean & QRM", "Kanban-beregner", "Lager & plukning",
-    "Køre-hviletid & vægte", "Told & dokumenter", "Grøn godstransport",
+    "Køre-hviletid & vægte", "Volumenvægt & fragtgrundlag",
+    "Luftfragt & frihedsrettigheder", "Told & dokumenter", "Grøn godstransport",
 ]
 
 goto = st.session_state.pop("goto_modul", None)
@@ -400,6 +401,27 @@ elif modul == "Lean & QRM":
         ], columns=["", "Lean/JIT trives ved", "QRM trives ved"])
         st.dataframe(fit, hide_index=True, width="stretch")
 
+    st.markdown("#### Lean: de 5 principper")
+    st.markdown(
+        "Rammen om alt det andet. Rækkefølgen er ikke tilfældig — hvert princip "
+        "forudsætter det foregående:\n\n"
+        "1. **Værdi** — kunden definerer, hvad der er værd at betale for. Ikke "
+        "afdelingen, ikke maskinen.\n"
+        "2. **Værdistrøm** — kortlæg alle skridt fra råvare til kunde, og skil "
+        "dem der tilfører værdi fra dem der ikke gør (se værdistrømsanalysen nedenfor).\n"
+        "3. **Flow** — få det til at glide uden stop, bunker og ventetid. Ét "
+        "stykke ad gangen frem for store batches.\n"
+        "4. **Pull** — producér først, når det næste led faktisk trækker. "
+        "Signalet er typisk et kanban-kort.\n"
+        "5. **Perfektion** — gentag de fire første i det uendelige. Lean er en "
+        "retning, ikke en tilstand man når.")
+    st.warning(
+        "**Fælde til forsvaret:** principperne er en rækkefølge, ikke en menu. "
+        "Indfører man pull uden først at have skabt flow, vokser lagrene i "
+        "stedet for at falde — pull uden flow er bare et lager med et nyt navn. "
+        "Samme pointe gælder omvendt: der er ingen grund til at optimere flow i "
+        "et trin, kunden slet ikke betaler for.")
+
     st.markdown("#### Lean: de 8 former for spild (muda)")
     st.markdown(
         "1. **Overproduktion** — at lave mere/tidligere end der efterspørges (den værste: skaber de andre)\n"
@@ -413,6 +435,49 @@ elif modul == "Lean & QRM":
         "Værktøjerne omkring dem: **kaizen** (løbende små forbedringer), **jidoka** "
         "(stop ved fejl, byg kvaliteten ind), **pull/kanban** (producér kun det næste "
         "led beder om — se Kanban-beregneren), og **værdistrømsanalyse**:")
+
+    st.markdown("#### Muda er kun den ene af tre")
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.markdown("**Muda — spild**")
+        st.caption("Arbejde uden værdi for kunden. De 8 typer ovenfor. "
+                   "Det, alle kan få øje på.")
+    with m2:
+        st.markdown("**Mura — ujævnhed**")
+        st.caption("Svingninger i belastningen: travlt mandag, tomt torsdag. "
+                   "Skaber både overbelastning og spild.")
+    with m3:
+        st.markdown("**Muri — overbelastning**")
+        st.caption("Mennesker og maskiner presset ud over det, de kan holde til. "
+                   "Giver fejl, nedbrud og sygefravær.")
+    st.info(
+        "**Rækkefølgen betyder noget:** ujævnhed (mura) skaber overbelastning "
+        "(muri), som skaber spild (muda). De fleste jagter kun muda, fordi det "
+        "er lettest at se — men fjerner man spildet uden at udjævne "
+        "belastningen, kommer det igen. Til forsvaret: peg på årsagen, ikke "
+        "kun symptomet.")
+
+    st.markdown("#### To værktøjer, der ofte spørges til")
+    s1, s2 = st.columns(2)
+    with s1:
+        st.markdown("**5S — orden som fundament**")
+        st.markdown(
+            "Sortér · Sæt i system · Systematisk rengøring · Standardisér · "
+            "Selvdisciplin.\n\n"
+            "Ikke oprydning for pænhedens skyld: pointen er, at afvigelser "
+            "bliver **synlige**. Mangler et værktøj på sin plads, ses det med "
+            "det samme. Uden 5S kan man ikke se, om flowet er brudt.")
+    with s2:
+        st.markdown("**SMED — omstilling som flaskehals**")
+        st.markdown(
+            "Lang omstillingstid er selve grunden til, at man kører store "
+            "batches — og store batches er grunden til lange gennemløbstider.\n\n"
+            "Greb: skil **indre** tid (maskinen står stille) fra **ydre** tid "
+            "(kan gøres mens den kører), flyt så meget som muligt til ydre, og "
+            "forenkl resten. Falder omstillingstiden, falder den økonomiske "
+            "seriestørrelse med — og så bliver flow pludselig muligt.")
+    st.caption("Regn effekten selv: mindre omstillingstid sænker den optimale "
+               "seriestørrelse i **POQ/EPQ** på Indkøb- og Produktion-siderne.")
 
     st.markdown("#### Værdistrømsanalyse (VSM — 'Learning to See')")
     st.markdown(
@@ -737,6 +802,70 @@ elif modul == "Køre-hviletid & vægte":
                             if tiltale else "under tiltalegrænsen, men stadig ulovligt."))
                 (st.error if tiltale else st.warning)(tekst)
 
+    st.markdown("---")
+    st.markdown("#### Tre regelsæt, der let forveksles med køre-/hviletid")
+
+    with st.expander("⏱️ Arbejdstid — et ANDET regelsæt end køre-/hviletid"):
+        st.markdown(
+            "Køre-/hviletidsreglerne handler om **kørslen**. Arbejdstidsreglerne "
+            "handler om **hele arbejdsdagen** — også læsning, papirarbejde og "
+            "ventetid. De gælder samtidig, og man kan overholde det ene og "
+            "bryde det andet.\n\n"
+            "- **Arbejdstid** er al tid i tjeneste: kørsel, læsning/losning, "
+            "kontrol, rengøring og administration.\n"
+            "- **Rådighedstid** er ventetid, hvor man på forhånd ved, hvor "
+            "længe man venter, og ikke skal stå til rådighed for opgaver — "
+            "fx færgeoverfart eller ventetid ved grænse. Den tæller **ikke** "
+            "med i arbejdstiden.\n"
+            "- **Maksimal ugentlig arbejdstid:** 48 timer i gennemsnit, med "
+            "60 timer som absolut loft i en enkelt uge.\n"
+            "- **Pause:** der skal holdes pause, inden der er arbejdet 6 timer "
+            "i træk.\n"
+            "- **Natarbejde** udløser en lavere grænse for den daglige "
+            "arbejdstid.")
+        st.info("**Fælde:** en chauffør kan sagtens holde sig inden for "
+                "køre-/hviletiden og alligevel bryde arbejdstidsreglerne, "
+                "fordi læsning og ventetid tæller med dér. Til eksamen: "
+                "nævn hvilket regelsæt du argumenterer ud fra.")
+
+    with st.expander("🚛 Særtransport — når godset sprænger rammerne"):
+        st.markdown(
+            "En **særtransport** er en transport, der overskrider de "
+            "almindelige grænser for bredde, længde, højde eller vægt. Så "
+            "skifter spillereglerne:\n\n"
+            "- **Tilladelse** skal indhentes på forhånd hos myndigheden, og "
+            "den er knyttet til en **konkret rute** — ikke til køretøjet.\n"
+            "- **Forudsætning** for tilladelse er, at godset ikke kan deles op. "
+            "Kan det skilles ad, gives der ikke tilladelse.\n"
+            "- **Hastighedsgrænsen falder med vægten** — jo tungere "
+            "vogntoget er, desto lavere må der køres.\n"
+            "- **Følgebil** kræves over bestemte mål, og både bil og "
+            "chauffør skal være godkendt til opgaven.\n"
+            "- **Ruten undersøges** for broer, viadukter, master og "
+            "rundkørsler, inden turen planlægges — og mange strækninger må "
+            "kun befares om natten.")
+        st.caption("Projektlast — vindmøllevinger, transformere, anlægsdele — "
+                   "ender næsten altid som særtransport på det sidste stykke. "
+                   "Se **Luftfragt & frihedsrettigheder** for planlægningen.")
+
+    with st.expander("🌫️ Euro-normer — hvad lastbilen må slippe ud"):
+        st.markdown(
+            "Fælles europæiske grænser for udstødning fra tunge "
+            "dieselkøretøjer. Normen følger køretøjets **registreringsår**, "
+            "ikke ejeren, og trinene er blevet skærpet kraftigt over tid — "
+            "især for **NOx** (kvælstofilter) og **partikler**.\n\n"
+            "Hvorfor det rager en logistiker:\n"
+            "- **Miljøzoner** i byerne afviser køretøjer under et bestemt trin. "
+            "En gammel bil kan altså være lovlig at eje, men ulovlig at køre "
+            "ind i byen med.\n"
+            "- **Udbud og kundekrav** stiller ofte minimumskrav til flådens "
+            "Euro-norm.\n"
+            "- **Vognmandens investeringsbeslutning**: en ældre bil er "
+            "billigere at købe, men lukket ude af de opgaver, der betaler bedst.")
+        st.info("**Skil dem ad:** Euro-normen begrænser luftforurening "
+                "(NOx, partikler) — ikke CO₂. CO₂ afhænger af brændstofforbrug "
+                "og energikilde, og hører til under **Grøn godstransport**.")
+
     st.page_link("pages/8_Jura.py",
                  label="⚖️ Hvem bærer ansvaret for godset undervejs? Se Incoterms/CISG")
 
@@ -804,6 +933,133 @@ elif modul == "Told & dokumenter":
 
     st.page_link("pages/8_Jura.py",
                  label="⚖️ Incoterms + CISG — leveringsbetingelser og misligholdelse")
+
+
+# ===========================================================================
+# Volumenvægt & fragtgrundlag
+# ===========================================================================
+elif modul == "Volumenvægt & fragtgrundlag":
+    st.subheader("Volumenvægt — hvad betaler du egentlig fragt for?")
+    st.caption(
+        "Fragtføreren sælger to ting på én gang: **løfteevne** og **plads**. "
+        "Derfor afregnes en sending efter det største af faktisk vægt og "
+        "volumenvægt. Let, voluminøst gods betaler for pladsen — også selvom "
+        "det næsten intet vejer.")
+
+    vv1, vv2 = st.columns([1, 1])
+    with vv1:
+        st.markdown("**Målene pr. kolli**")
+        v_l = st.number_input("Længde (cm)", 1.0, 2000.0, 120.0, 1.0, key="vv_l")
+        v_b = st.number_input("Bredde (cm)", 1.0, 2000.0, 80.0, 1.0, key="vv_b")
+        v_h = st.number_input("Højde (cm)", 1.0, 2000.0, 100.0, 1.0, key="vv_h")
+        v_kg = st.number_input("Vægt pr. kolli (kg)", 0.1, 50000.0, 90.0, 0.5,
+                               key="vv_kg")
+        v_n = st.number_input("Antal kolli", 1, 5000, 1, 1, key="vv_n")
+    with vv2:
+        st.markdown("**Transportform**")
+        v_form = st.selectbox("Omregningsfaktor", list(ds.OMREGNING.keys()),
+                              key="vv_form",
+                              help="Hvor mange kg ét kubikmeter 'vejer' i "
+                                   "fragtberegningen. Flyet har løfteproblemet, "
+                                   "skibet har pladsproblemet — derfor er "
+                                   "faktorerne så forskellige.")
+        v_faktor = st.number_input(
+            "kg pr. m³", 1.0, 2000.0, float(ds.OMREGNING[v_form]), 1.0,
+            key="vv_faktor",
+            help="Rediger frit, hvis din case oplyser en anden faktor.")
+
+    r_vv = ds.volumenvaegt(v_l, v_b, v_h, v_kg, int(v_n), v_faktor)
+    if "fejl" in r_vv:
+        st.error(r_vv["fejl"])
+    else:
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Rumfang", f"{num(r_vv['m3'], 3)} m³")
+        k2.metric("Faktisk vægt", f"{num(r_vv['faktisk_vaegt'], 1)} kg")
+        k3.metric("Volumenvægt", f"{num(r_vv['volumenvaegt'], 1)} kg")
+
+        st.metric(f"Fragtgrundlag — betales efter {r_vv['betales_efter']}",
+                  f"{num(r_vv['fragtgrundlag'], 1)} kg",
+                  delta=f"{num(r_vv['overskydende_kg'], 1)} kg mere end det andet mål")
+
+        st.markdown(
+            f"**Mellemregning:** {num(v_l, 0)} × {num(v_b, 0)} × {num(v_h, 0)} cm "
+            f"= {num(r_vv['m3_pr_kolli'], 4)} m³ pr. kolli × {int(v_n)} stk. "
+            f"= **{num(r_vv['m3'], 3)} m³**.  \n"
+            f"Volumenvægt = {num(r_vv['m3'], 3)} m³ × {num(v_faktor, 0)} kg/m³ "
+            f"= **{num(r_vv['volumenvaegt'], 1)} kg**.  \n"
+            f"Fragtgrundlag = største af {num(r_vv['faktisk_vaegt'], 1)} kg og "
+            f"{num(r_vv['volumenvaegt'], 1)} kg = **{num(r_vv['fragtgrundlag'], 1)} kg**.")
+
+        st.caption(f"Godsets densitet er {num(r_vv['densitet_kg_pr_m3'], 1)} kg/m³. "
+                   f"Ligger den under omregningsfaktoren ({num(v_faktor, 0)} kg/m³), "
+                   "betaler du for luft.")
+
+    st.info(
+        "**Til forsvaret:** vend den om. Skal du *rådgive*, er spørgsmålet ikke "
+        "«hvad koster det?», men «kan vi ændre densiteten?» — bedre pakning, "
+        "adskilt forsendelse eller et andet kollimål kan flytte grundlaget fra "
+        "volumen til vægt. Det er en billigere besparelse end at forhandle raten.")
+    st.caption("Søfragtens 1 m³ = 1.000 kg er den klassiske **measureton** "
+               "(w/m — weight or measurement).")
+
+
+# ===========================================================================
+# Luftfragt & frihedsrettigheder
+# ===========================================================================
+elif modul == "Luftfragt & frihedsrettigheder":
+    st.subheader("Luftfartens frihedsrettigheder")
+    st.caption(
+        "Et fly må ikke bare flyve, hvorhen det vil. Retten til at krydse, "
+        "lande og laste i et andet land forhandles mellem stater, og de ni "
+        "friheder er trappen fra «flyve henover» til «flyve frit indenrigs i "
+        "et fremmed land». De fire første er officielle; resten bruges i "
+        "praksis, men er ikke formelt anerkendte på samme måde.")
+
+    # Markdown frem for st.dataframe: forklaringerne er hele sætninger, og et
+    # datagrid klipper dem af ved kolonnekanten i stedet for at ombryde.
+    st.markdown(
+        "| # | Status | Kort sagt | Hvad den giver ret til |\n"
+        "|---|---|---|---|\n"
+        "| **1** | Officiel | Overflyvning | Flyve gennem et andet lands "
+        "luftrum uden at lande. |\n"
+        "| **2** | Officiel | Teknisk landing | Lande i et andet land for at "
+        "tanke eller reparere — men ikke for at laste. |\n"
+        "| **3** | Officiel | Sætte af ude | Flyve passagerer og gods **fra** "
+        "sit hjemland **til** et andet land. |\n"
+        "| **4** | Officiel | Tage med hjem | Flyve passagerer og gods **fra** "
+        "et andet land **til** sit hjemland. |\n"
+        "| **5** | Officiel | Mellemlanding med last | På vej mellem to andre "
+        "lande må man laste og losse undervejs. |\n"
+        "| **6** | Uofficiel | Over eget hub | Flyve mellem to fremmede lande "
+        "med mellemlanding i sit eget — 3. og 4. frihed sat sammen. |\n"
+        "| **7** | Uofficiel | Rute uden hjemland | Drive en rute, der slet "
+        "ikke berører hjemlandet. |\n"
+        "| **8** | Uofficiel | Cabotage i forlængelse | Flyve indenrigs i et "
+        "fremmed land som forlængelse af en rute hjemmefra. |\n"
+        "| **9** | Uofficiel | Ren cabotage | Flyve rent indenrigs i et "
+        "fremmed land uden forbindelse til hjemlandet. |\n")
+
+    st.info(
+        "**Den der oftest spørges til:** 6. frihed. Den står ikke i "
+        "konventionen, men er i praksis hele forretningsmodellen bag de store "
+        "omstignings-lufthavne — man kobler 4. og 3. frihed og flyver dermed "
+        "mellem to lande, man ellers ikke måtte beflyve direkte.")
+
+    st.markdown("#### Projektlast — når godset ikke passer i noget")
+    st.markdown(
+        "Projektlast er sendinger, der er for tunge, for lange eller for "
+        "uhåndterlige til almindelig stykgods: anlægsdele, transformere, "
+        "vindmøllevinger. Det ændrer hele planlægningen:\n\n"
+        "- **Ruten planlægges baglæns** fra modtagerens adgangsforhold — ikke "
+        "fremad fra fabrikken. Kan svinget ikke tages, er ruten ligegyldig.\n"
+        "- **Det sidste stykke går altid på vej.** Uanset om hovedturen er sø "
+        "eller bane, ender godset på et blokvogntog — og dermed i "
+        "særtransport-reglerne (tilladelse, følgebil, hastighedsgrænse).\n"
+        "- **Forundersøgelse** af broer, viadukter, master og rundkørsler er "
+        "en del af opgaven, ikke en formalitet.\n"
+        "- **Tidsvinduer**: mange strækninger må kun befares om natten.")
+    st.caption("Reglerne for selve særtransporten ligger under "
+               "**Køre-hviletid & vægte**.")
 
 
 # ===========================================================================

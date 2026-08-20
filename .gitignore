@@ -20,3 +20,6 @@ __pycache__/
 Dockerfile
 docker-compose.yml
 .dockerignore
+
+# Personlige fremskridt i Forsvarstræneren — lokale data, ikke kode.
+data/forsvar_progress.json

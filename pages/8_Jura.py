@@ -176,6 +176,7 @@ K_INCO = "Incoterms & transport"
 K_FRIST = "CISG: mangler & frister"
 K_OPH = "CISG: ophævelse & erstatning"
 K_VILKAAR = "Standardvilkår & aftalen"
+K_FRAGT = "Transportjura: fragtførerens ansvar"
 
 JURA = [
     {
@@ -202,6 +203,77 @@ JURA = [
                "derefter sit tab dækket hos fragtføreren efter CMR — men den vægtbaserede "
                "begrænsning kan betyde, at han ikke får hele tabet hjem.",
         "soeg": ["cmr", "transportør", "fragtfører", "ansvarsbegrænsning", "kravstille", "ddp"],
+    },
+    {
+        "navn": "Én konvention pr. transportform",
+        "kat": K_FRAGT,
+        "siger": "Fragtførerens ansvar er **ikke** reguleret af købeloven eller CISG, men af "
+                 "en konvention der følger **transportformen**: **CMR** (international "
+                 "landevej), **Haag-Visby** (sø, konnossement), **Montreal** (luft) og "
+                 "**COTIF/CIM** (jernbane). Skifter godset transportform undervejs, kan det "
+                 "skifte regelsæt med.",
+        "her": "Første spørgsmål i enhver godsskade-sag er derfor ikke «hvad stod der i "
+               "kontrakten?», men «hvordan blev godset transporteret, da skaden skete?». "
+               "Ved multimodal transport kan skaden falde ind under det ene regelsæt på "
+               "vejstrækningen og et andet til søs — og ansvarsgrænserne er vidt forskellige.",
+        "soeg": ["cmr", "haag-visby", "hague", "montreal", "cotif", "cim", "warszawa",
+                 "konvention", "transportform", "multimodal", "fragtfører"],
+    },
+    {
+        "navn": "Ansvarsgrænsen er vægtbaseret — ikke værdibaseret",
+        "kat": K_FRAGT,
+        "siger": "Konventionerne begrænser fragtførerens erstatning til et beløb **pr. kilo** "
+                 "(opgjort i **SDR**, en international regningsenhed), ikke til godsets værdi. "
+                 "Grænsen er lavest på vej og bane og højest i luftfart. Søfragt har en "
+                 "dobbelt grænse: pr. kolli **eller** pr. kilo — det højeste af de to.",
+        "her": "Det er fagets skarpeste pointe: **ansvar er ikke det samme som varens værdi**. "
+               "Let, dyrt gods — elektronik, medicin, komponenter — er systematisk "
+               "underdækket, fordi erstatningen regnes på vægten. Til eksamen: regn tabet og "
+               "regn grænsen, og vis forskellen. Konklusionen er sjældent «fragtføreren "
+               "betaler» — den er «fragtføreren betaler en brøkdel, resten skal forsikres».",
+        "soeg": ["sdr", "ansvarsgrænse", "ansvarsbegrænsning", "kg", "erstatning",
+                 "underdækket", "vareforsikring", "kolli"],
+    },
+    {
+        "navn": "Når ansvarsgrænsen kan gennembrydes",
+        "kat": K_FRAGT,
+        "siger": "Begrænsningen falder bort ved **forsæt eller grov uagtsomhed** hos "
+                 "fragtføreren, og den gælder heller ikke, hvis afsenderen har **deklareret "
+                 "en særlig værdi** og betalt tillæg for det.",
+        "her": "To veje ud, når erstatningen er utilstrækkelig. Den første kræver bevis for "
+               "kvalificeret skyld — svær. Den anden er den praktiske: deklarér værdien på "
+               "forhånd, eller tegn en separat **vareforsikring**, som er langt billigere end "
+               "værdideklaration. Det er den rådgivning, opgaven typisk efterspørger.",
+        "soeg": ["forsæt", "grov uagtsomhed", "værdideklaration", "gennembrud",
+                 "vareforsikring", "tillæg"],
+    },
+    {
+        "navn": "Reklamation over transportskade — synlig eller skjult",
+        "kat": K_FRAGT,
+        "siger": "Konventionerne skelner mellem **synlig** skade, der skal påtales ved "
+                 "modtagelsen, og **skjult** skade, hvor der er en kort frist efter "
+                 "udlevering. Reklameres der ikke i tide, formodes godset udleveret i god "
+                 "stand — bevisbyrden vender.",
+        "her": "En kvitteret fragtseddel uden forbehold er et stærkt bevis **mod** modtageren. "
+               "Derfor er den praktiske regel: tag forbehold på fragtsedlen ved mindste tvivl, "
+               "og fotografér ved modtagelsen. Fristerne her er ikke de samme som CISG's "
+               "reklamationsfrister over for sælgeren — det er to forskellige forhold, og de "
+               "kan begge være i spil på én gang.",
+        "soeg": ["reklamation", "synlig skade", "skjult skade", "fragtseddel",
+                 "forbehold", "bevisbyrde", "udlevering"],
+    },
+    {
+        "navn": "Ansvar og Incoterms hænger sammen — men er ikke det samme",
+        "kat": K_FRAGT,
+        "siger": "**Incoterms** fordeler risiko og omkostninger mellem **køber og sælger**. "
+                 "**Transportkonventionerne** regulerer forholdet til **fragtføreren**. To "
+                 "forskellige retsforhold, som ofte forveksles.",
+        "her": "Kæden i en skadesag: Incoterm-klausulen afgør, **hvem af parterne** der bærer "
+               "tabet, da skaden skete. Den part går derefter videre mod fragtføreren efter "
+               "den konvention, der gælder for transportformen — og støder dér på den "
+               "vægtbaserede grænse. At kunne føre den kæde igennem i ét svar er præcis, "
+               "hvad en tværfaglig case beder om.",
+        "soeg": ["incoterms", "risikoovergang", "regres", "kravkæde", "retsforhold"],
     },
     {
         "navn": "CISG — hvornår gælder den?",
@@ -354,7 +426,8 @@ SCORE_TIP = ("🎓 **Sådan scorer du point:** 1) Nævn reglen med artikel/klaus
              "usikkert → 4) konkludér selv, kort og klart.")
 
 # --- Modulvælger (erstatter tabs, så der kan deep-linkes fra andre sider) --
-MODULER = ["Jurakatalog", "Incoterms & risikoens overgang", "Tvist-skabeloner"]
+MODULER = ["Jurakatalog", "Incoterms & risikoens overgang",
+           "Fragtførerens ansvar", "Tvist-skabeloner"]
 
 # Deep-link-konvention: andre sider sætter st.session_state['goto_modul']
 # lige før st.switch_page — læses HER, før modulvælger-widgetten oprettes.
@@ -496,6 +569,96 @@ elif modul == "Incoterms & risikoens overgang":
                 st.markdown(f"**Hvorfor her:** {ic['her']}")
     st.caption("⭐ DDP er ofte den eksamensrelevante: en transportskade FØR destinationen ligger "
                "hos sælger — se den fulde argumentationskæde under fanen 🧭 Tvist-skabeloner.")
+
+
+# ===========================================================================
+# FRAGTFØRERENS ANSVAR — én konvention pr. transportform
+# ===========================================================================
+elif modul == "Fragtførerens ansvar":
+    st.subheader("Fragtførerens ansvar — én konvention pr. transportform")
+    st.caption(
+        "Incoterms fordeler risikoen mellem **køber og sælger**. Når godset "
+        "bliver skadet undervejs, er spørgsmålet et andet: hvad kan man få ud "
+        "af **fragtføreren**? Det afgøres ikke af købsaftalen, men af den "
+        "konvention der gælder for den transportform, godset var på, da "
+        "skaden skete.")
+
+    st.markdown("#### Fire regelsæt, fire ansvarsgrænser")
+    st.markdown(
+        "| Transportform | Konvention | Ansvarsgrænse | Bemærk |\n"
+        "|---|---|---|---|\n"
+        "| **Landevej** (international) | CMR | ca. **8,33 SDR pr. kg** | "
+        "Den laveste af dem alle — og den, dansk gods oftest møder. |\n"
+        "| **Sø** (konnossement) | Haag-Visby | ca. **666,67 SDR pr. kolli** "
+        "**eller** ca. **2 SDR pr. kg** | Det **højeste** af de to gælder — "
+        "derfor betyder det noget, hvordan godset er pakket og beskrevet. |\n"
+        "| **Luft** | Montreal | ca. **22 SDR pr. kg** | Den højeste grænse. "
+        "Afløser den ældre Warszawa-konvention. |\n"
+        "| **Jernbane** | COTIF/CIM | ca. **17 SDR pr. kg** | Ligger mellem "
+        "vej og luft. |\n")
+    st.caption(
+        "**SDR** (Special Drawing Rights) er IMF's regningsenhed — en kurv af "
+        "valutaer med en dagskurs, så grænsen ikke udhules af inflation i ét land.")
+
+    st.warning(
+        "**Tjek tallet, før du bruger det.** Beløbsgrænserne revideres "
+        "periodisk, og SDR-kursen ændrer sig dagligt. Tallene ovenfor er "
+        "størrelsesordenen, du skal kunne huske til forsvaret — men skriver du "
+        "et konkret erstatningsbeløb i rapporten, så slå den gældende sats og "
+        "dagskurs op og henvis til kilden. Det er præcis den slags tal, en "
+        "AI-model finder på med fuld selvsikkerhed.")
+
+    st.markdown("#### Hvorfor det næsten altid ender med en underdækning")
+    fa1, fa2 = st.columns([1, 1])
+    with fa1:
+        st.markdown("**Regn selv efter**")
+        f_vaegt = st.number_input("Godsets vægt (kg)", 1.0, 100000.0, 400.0, 10.0,
+                                  key="ju_fa_vaegt")
+        f_vaerdi = st.number_input("Godsets værdi (kr.)", 100.0, 50_000_000.0,
+                                   450000.0, 1000.0, key="ju_fa_vaerdi")
+        f_sats = st.number_input("Ansvarsgrænse (SDR pr. kg)", 0.1, 50.0, 8.33, 0.01,
+                                 key="ju_fa_sats",
+                                 help="8,33 for CMR (vej) · ~2 for sø pr. kg · "
+                                      "~22 for luft · ~17 for bane.")
+        f_kurs = st.number_input("SDR-kurs (kr. pr. SDR)", 1.0, 30.0, 9.5, 0.1,
+                                 key="ju_fa_kurs",
+                                 help="Dagskurs — slå den op, hvis tallet skal i "
+                                      "en aflevering.")
+    with fa2:
+        def _dk(x, dec=0):
+            """Dansk talformat: punktum som tusindtalsskiller, komma som decimal
+            — samme konvention som num() på de øvrige sider."""
+            return f"{x:,.{dec}f}".replace(",", "§").replace(".", ",").replace("§", ".")
+
+        maks = f_vaegt * f_sats * f_kurs
+        udaekket = max(0.0, f_vaerdi - maks)
+        daekning = maks / f_vaerdi * 100 if f_vaerdi > 0 else 0.0
+        st.metric("Fragtførerens maksimale erstatning", f"{_dk(maks)} kr.")
+        st.metric("Dit udækkede tab", f"{_dk(udaekket)} kr.",
+                  delta=f"{_dk(daekning, 1)} % af værdien er dækket",
+                  delta_color="off")
+        st.markdown(
+            f"**Mellemregning:** {_dk(f_vaegt)} kg × {_dk(f_sats, 2)} SDR × "
+            f"{_dk(f_kurs, 2)} kr./SDR = **{_dk(maks)} kr.**")
+        if udaekket > 0:
+            st.error("Fragtføreren dækker kun en brøkdel. Resten skal enten "
+                     "værdideklareres på forhånd eller dækkes af en "
+                     "**vareforsikring**.")
+        else:
+            st.success("Grænsen dækker hele værdien — det sker ved tungt, "
+                       "billigt gods.")
+
+    st.info(
+        "**Argumentet, censor leder efter:** ansvarsgrænsen er **vægtbaseret**, "
+        "værdien er det ikke. Let og dyrt gods er derfor systematisk "
+        "underdækket. Konklusionen på en godsskade-opgave er sjældent "
+        "«fragtføreren betaler» — den er «fragtføreren betaler X, og de "
+        "resterende Y skulle have været forsikret». Vis kæden: "
+        "Incoterm → hvem bærer tabet → hvilken konvention → hvad grænsen giver "
+        "→ hvad der mangler.")
+
+    st.page_link("pages/9_Distribution.py",
+                 label="🚚 Hvilken transportform? Se Transportformsvalg")
 
 
 # ===========================================================================

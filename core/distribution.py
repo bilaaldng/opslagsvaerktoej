@@ -13,6 +13,13 @@ Ingen Streamlit-kald herinde. Notation matcher kursusmaterialet:
         y = D · T · (1 + x) / C   — rundes ALTID op til nærmeste hele kort.
         D = efterspørgsel pr. tidsenhed, T = tid for at fylde og flytte én
         beholder, x = sikkerhedsfaktor (decimal), C = beholderstørrelse.
+
+    Volumenvægt / fragtgrundlag (measureton):
+        Fragtføreren betales for det, der fylder mest — vægt ELLER volumen.
+        volumenvægt = m³ · omregningsfaktor
+        fragtgrundlag = max(faktisk vægt, volumenvægt)
+        Omregningsfaktoren afhænger af transportformen, fordi et fly har
+        vægtproblemet og et skib pladsproblemet.
 """
 
 from __future__ import annotations
@@ -113,3 +120,57 @@ def kanban_kort(D: float, T: float, x: float, C: float) -> dict:
     y = math.ceil(y_raa - 1e-9)     # 20,0000001 pga. flydende tal → stadig 20
     return {"y_raa": y_raa, "y": y, "maks_lager": y * C,
             "taeller": D * T * (1 + x)}
+
+
+# ---------------------------------------------------------------------------
+# Volumenvægt / fragtgrundlag (measureton)
+# ---------------------------------------------------------------------------
+
+# kg pr. m³ — hvad ét kubikmeter "vejer" i fragtberegningen. Tallene er
+# branchens gængse omregningsfaktorer og adskiller sig, fordi transportformerne
+# har hver deres knappe ressource: flyet mangler løfteevne, skibet mangler plads.
+OMREGNING = {
+    "Luftfragt": 167.0,      # 1 m³ ≈ 167 kg  (svarer til 1:6 000 cm³/kg)
+    "Landevej": 333.0,       # 1 m³ ≈ 333 kg  (1:3)
+    "Søfragt (LCL)": 1000.0,  # 1 m³ ≈ 1 000 kg — measureton, 1:1
+    "Kurér/ekspres": 200.0,  # 1 m³ ≈ 200 kg  (1:5 000 cm³/kg)
+}
+
+
+def volumenvaegt(laengde_cm: float, bredde_cm: float, hoejde_cm: float,
+                 faktisk_vaegt_kg: float, antal: int = 1,
+                 faktor_kg_pr_m3: float = 167.0) -> dict:
+    """Fragtgrundlaget = det største af faktisk vægt og volumenvægt.
+
+    Mål angives i cm pr. kolli, vægt i kg pr. kolli. Faktoren er kg pr. m³
+    og afhænger af transportformen (se OMREGNING).
+
+    Returnerer også hvilken af de to der blev betalt for, og hvor meget den
+    oversteg den anden — det er dér, pointen ligger: let og voluminøst gods
+    betales efter pladsen, ikke efter vægten.
+    """
+    if min(laengde_cm, bredde_cm, hoejde_cm) <= 0:
+        return {"fejl": "Længde, bredde og højde skal alle være positive."}
+    if faktisk_vaegt_kg <= 0:
+        return {"fejl": "Vægten skal være positiv."}
+    if antal < 1:
+        return {"fejl": "Antal kolli skal være mindst 1."}
+    if faktor_kg_pr_m3 <= 0:
+        return {"fejl": "Omregningsfaktoren skal være positiv."}
+
+    m3_pr_kolli = (laengde_cm * bredde_cm * hoejde_cm) / 1_000_000
+    m3 = m3_pr_kolli * antal
+    vaegt = faktisk_vaegt_kg * antal
+    vol_vaegt = m3 * faktor_kg_pr_m3
+    grundlag = max(vaegt, vol_vaegt)
+    return {
+        "m3_pr_kolli": m3_pr_kolli,
+        "m3": m3,
+        "faktisk_vaegt": vaegt,
+        "volumenvaegt": vol_vaegt,
+        "fragtgrundlag": grundlag,
+        "betales_efter": "volumen" if vol_vaegt > vaegt else "vægt",
+        # hvor meget det betalte grundlag overstiger det andet mål
+        "overskydende_kg": abs(vol_vaegt - vaegt),
+        "densitet_kg_pr_m3": vaegt / m3 if m3 > 0 else 0.0,
+    }

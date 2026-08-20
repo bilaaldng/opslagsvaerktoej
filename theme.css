@@ -941,3 +941,29 @@ button[kind="pillsActive"] p, button[kind="segmented_controlActive"] p {
   color: #f8fafc !important;
   font-weight: 650;
 }
+
+/* ---------------------------------------------------------------------------
+   Ordbogen — fag-mærkater
+   Et begreb kan høre til flere fag, og mærkaterne bærer fagets egen
+   accentfarve (samme som forsidens kort), så man genkender faget på farven
+   frem for at skulle læse etiketten. Farven sættes pr. mærkat i --c.
+--------------------------------------------------------------------------- */
+.ord-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 12px;
+}
+.ord-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--c, #94a3b8);
+  background: color-mix(in srgb, var(--c, #94a3b8) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c, #94a3b8) 38%, transparent);
+  white-space: nowrap;
+}

@@ -93,3 +93,57 @@ def test_tc_haandregning():
 
 def test_tyngdepunkt_ingen_maengder():
     assert "fejl" in ds.tyngdepunkt([{"x": 1, "y": 1, "D": 0}])
+
+
+# --- Volumenvægt / fragtgrundlag (measureton) -------------------------------
+# Fagets eget eksempel: en sending på 3,4 CBM der vejer 750 kg. Under
+# søfragtens measureton (1 m³ = 1.000 kg) afregnes den som 3.400 kg — altså
+# 4½ gang sin egen vægt. Det er hele pointen med volumenvægt.
+
+def test_volumenvaegt_kursus_eksempel_soefragt():
+    r = ds.volumenvaegt(100, 100, 340, faktisk_vaegt_kg=750,
+                        faktor_kg_pr_m3=ds.OMREGNING["Søfragt (LCL)"])
+    assert approx(r["m3"], 3.4)
+    assert approx(r["volumenvaegt"], 3400)
+    assert approx(r["fragtgrundlag"], 3400)
+    assert r["betales_efter"] == "volumen"
+
+
+def test_volumenvaegt_tungt_kompakt_gods_betales_efter_vaegt():
+    """Tungt, lille gods: den faktiske vægt vinder, og så er volumen ligegyldig."""
+    r = ds.volumenvaegt(50, 50, 50, faktisk_vaegt_kg=200,
+                        faktor_kg_pr_m3=ds.OMREGNING["Luftfragt"])
+    assert approx(r["m3"], 0.125)
+    assert approx(r["volumenvaegt"], 20.875)
+    assert r["fragtgrundlag"] == 200
+    assert r["betales_efter"] == "vægt"
+
+
+def test_volumenvaegt_grundlaget_er_altid_det_stoerste():
+    for faktor in ds.OMREGNING.values():
+        r = ds.volumenvaegt(80, 60, 40, faktisk_vaegt_kg=35, faktor_kg_pr_m3=faktor)
+        assert r["fragtgrundlag"] == max(r["faktisk_vaegt"], r["volumenvaegt"])
+
+
+def test_volumenvaegt_skalerer_med_antal_kolli():
+    en = ds.volumenvaegt(120, 80, 100, faktisk_vaegt_kg=90, antal=1)
+    ti = ds.volumenvaegt(120, 80, 100, faktisk_vaegt_kg=90, antal=10)
+    assert approx(ti["m3"], en["m3"] * 10)
+    assert approx(ti["fragtgrundlag"], en["fragtgrundlag"] * 10)
+
+
+def test_volumenvaegt_samme_kasse_skifter_grundlag_med_transportform():
+    """Samme kolli, forskellig transportform → forskelligt fragtgrundlag.
+    Det er derfor omregningsfaktoren skal med i argumentet til eksamen."""
+    mål = dict(laengde_cm=120, bredde_cm=80, hoejde_cm=100, faktisk_vaegt_kg=90)
+    luft = ds.volumenvaegt(**mål, faktor_kg_pr_m3=ds.OMREGNING["Luftfragt"])
+    soe = ds.volumenvaegt(**mål, faktor_kg_pr_m3=ds.OMREGNING["Søfragt (LCL)"])
+    assert soe["fragtgrundlag"] > luft["fragtgrundlag"]
+    assert luft["betales_efter"] == "volumen"
+
+
+def test_volumenvaegt_afviser_ugyldige_maal():
+    assert "fejl" in ds.volumenvaegt(0, 50, 50, 10)
+    assert "fejl" in ds.volumenvaegt(50, 50, 50, 0)
+    assert "fejl" in ds.volumenvaegt(50, 50, 50, 10, antal=0)
+    assert "fejl" in ds.volumenvaegt(50, 50, 50, 10, faktor_kg_pr_m3=0)

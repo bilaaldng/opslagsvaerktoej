@@ -41,6 +41,8 @@ FAGFARVER = {
     "Jura":             "#eab308",   # gylden — vægtskålen
     "Distribution":     "#fb923c",   # orange — lastbilen
     "Forsvarstræner":   "#e879f9",   # fuchsia — eksamensdagen
+    "Projektstyring":   "#2dd4bf",   # teal   — planen og holdet
+    "Ordbog":           "#94a3b8",   # slate  — neutral, den står uden for fagene
 }
 
 _CSS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "theme.css")

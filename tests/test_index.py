@@ -26,6 +26,11 @@ def test_deeplinks_matcher_et_rigtigt_modul():
     for fag, titel, sti, modul, _ord in INDEKS:
         if modul is None:
             continue
+        if fag == "Ordbog":
+            # Ordbogen har ingen modulvælger — dens deep-link bærer et
+            # BEGREB, ikke et modulnavn. At begrebet findes, og at dets egne
+            # «hvor»-links peger på rigtige moduler, testes i test_ordbog.py.
+            continue
         mods = moduler_paa(sti)
         assert modul in mods, (
             f"«{fag} / {titel}» deep-linker til modulet «{modul}», "
