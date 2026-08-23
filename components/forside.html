@@ -26,7 +26,7 @@
   .search input{width:100%;padding:16px 20px 16px 50px;border-radius:15px;
     background:rgba(17,25,45,.72);border:1px solid var(--line);color:var(--ink);
     font-size:15px;font-family:inherit;outline:none;backdrop-filter:blur(14px);
-    transition:border-color .22s,box-shadow .22s}
+    transition:border-color .2s cubic-bezier(.23,1,.32,1),box-shadow .2s cubic-bezier(.23,1,.32,1)}
   .search input::placeholder{color:#66789d}
   .search input:focus{border-color:rgba(140,170,255,.55);
     box-shadow:0 0 0 4px rgba(93,132,255,.13)}
@@ -36,7 +36,11 @@
   .quick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:48px}
   .chip{padding:7px 14px;border-radius:999px;border:1px solid var(--line);
     background:rgba(255,255,255,.035);color:#b9c9e8;font-size:13px;cursor:pointer;
-    transition:.2s;font-family:inherit}
+    font-family:inherit;
+    transition:background .18s cubic-bezier(.23,1,.32,1),
+               border-color .18s cubic-bezier(.23,1,.32,1),
+               color .18s cubic-bezier(.23,1,.32,1),
+               transform .18s cubic-bezier(.23,1,.32,1)}
   .chip:hover{background:rgba(122,160,255,.16);color:#fff;
     border-color:rgba(140,170,255,.45);transform:translateY(-1px)}
 
@@ -44,7 +48,10 @@
   .traef-h{font-size:12.5px;color:#8ea6d8;letter-spacing:.05em;margin:0 0 10px}
   .traef-r{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:12px;
     border:1px solid var(--line);background:rgba(16,24,44,.7);margin-bottom:7px;
-    cursor:pointer;transition:.18s}
+    cursor:pointer;
+    transition:background .16s cubic-bezier(.23,1,.32,1),
+               border-color .16s cubic-bezier(.23,1,.32,1),
+               transform .16s cubic-bezier(.23,1,.32,1)}
   .traef-r:hover{background:rgba(122,160,255,.14);border-color:rgba(140,170,255,.4);
     transform:translateX(3px)}
   .traef-r .prik{width:7px;height:7px;border-radius:50%;flex:none}
@@ -60,7 +67,12 @@
     border:1px solid var(--line);cursor:pointer;overflow:hidden;
     transform-style:preserve-3d;
     transition:transform .16s ease-out,border-color .3s,box-shadow .3s}
-  .card::before{content:"";position:absolute;inset:0;opacity:0;transition:opacity .35s;
+  /* Mens musen er over kortet, følger hældningen markøren direkte. En
+     overgang på transform ville lægge 160 ms mellem hånd og billede, og
+     så føles kortet som om det halter efter. Overgangen skal kun bruges
+     på VEJEN TILBAGE, når musen forlader kortet.                        */
+  .card.folger{transition:border-color .3s,box-shadow .3s}
+  .card::before{content:"";position:absolute;inset:0;opacity:0;transition:opacity .28s ease-out;
     background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),
       color-mix(in srgb,var(--ac) 24%,transparent),transparent 62%)}
   .card:hover::before{opacity:1}
@@ -77,7 +89,17 @@
   .n{position:absolute;top:19px;right:21px;font-size:11px;color:#5d6f92;
     font-variant-numeric:tabular-nums;transform:translateZ(18px)}
 
-  @media (prefers-reduced-motion:reduce){ .card,.traef-r{transition:none} }
+  /* Reduceret bevægelse: farve- og kant-skift bliver - de fortæller hvad
+     der er markeret. Kun flytningen ryger. Hældningen slås fra i koden
+     nedenfor, for den sættes af JavaScript og rammes ikke af CSS her.   */
+  @media (prefers-reduced-motion:reduce){
+    .card{transition:border-color .2s,box-shadow .2s}
+    .card:hover,.chip:hover,.traef-r:hover{transform:none}
+  }
+  /* Touch: en finger udløser hover ved tryk, og løftet hænger fast bagefter. */
+  @media (hover:none),(pointer:coarse){
+    .card:hover,.chip:hover,.traef-r:hover{transform:none}
+  }
 </style>
 
 <canvas id="scene"></canvas>
@@ -149,14 +171,23 @@ grid.innerHTML = FAG.map((f,i) => `
     <h3>${f.navn}</h3><p>${f.beskrivelse}</p>
   </article>`).join("");
 
+/* Har brugeren slået bevægelse fra i systemindstillingerne, skal 3D-
+   hældningen heller ikke køre - den sættes herfra og fanges ikke af CSS'en. */
+const maa_bevaege = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 document.querySelectorAll(".card").forEach(el => {
   el.addEventListener("mousemove", e => {
     const r = el.getBoundingClientRect(), x = e.clientX-r.left, y = e.clientY-r.top;
     el.style.setProperty("--mx", x+"px"); el.style.setProperty("--my", y+"px");
+    if (!maa_bevaege) return;
+    el.classList.add("folger");   // slå overgangen fra: følg musen direkte
     el.style.transform =
       `rotateY(${(x/r.width-.5)*11}deg) rotateX(${-(y/r.height-.5)*11}deg) translateY(-4px)`;
   });
-  el.addEventListener("mouseleave", () => el.style.transform = "");
+  el.addEventListener("mouseleave", () => {
+    el.classList.remove("folger");  // tilbagevejen må gerne glide på plads
+    el.style.transform = "";
+  });
   el.addEventListener("click", () => gaaTil(el.dataset.slug));
 });
 

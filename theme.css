@@ -258,7 +258,9 @@ hr, [data-testid="stDivider"] hr {
   transform: scaleX(1);
 }
 [class*="st-key-fagkort"]:active {
-  transform: translateY(-1px) scale(0.992);
+  /* 0.992 var for lidt til at registrere som svar på et klik; 0.95-0.98 er
+     det spænd hvor trykket kan mærkes uden at kortet hopper. */
+  transform: translateY(-1px) scale(0.97);
   box-shadow: var(--shadow-soft), var(--inset-top);
   transition-duration: var(--t-fast);
 }
@@ -592,7 +594,13 @@ button[kind="secondary"] { color: var(--txt); }
   height: 3px;
   border-radius: 3px;
   box-shadow: 0 0 8px var(--accent-glow);
-  transition: all var(--t-slow) var(--ease);
+  /* Navngivne egenskaber i stedet for "all": "all" animerer også ting vi ikke
+     mente (fx højde og farve-udregninger) og gør det uden for grafikkortet. */
+  transition: transform var(--t-slow) var(--ease),
+              left var(--t-slow) var(--ease),
+              width var(--t-slow) var(--ease),
+              background-color var(--t-base) var(--ease),
+              box-shadow var(--t-base) var(--ease);
 }
 .stTabs [data-baseweb="tab-border"] { background-color: var(--line-soft); }
 .stTabs [data-baseweb="tab"]:focus-visible {
@@ -764,14 +772,51 @@ div[data-baseweb="notification"][kind="negative"] {
    TILGÆNGELIGHED — respektér reduceret bevægelse
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
+  /* "Reduceret bevægelse" betyder mindre og blidere - ikke ingenting.
+     Farve- og gennemsigtigheds-skift hjælper med at forstå hvad der sker
+     (hvad er markeret, hvad reagerede på klikket) og bliver derfor stående.
+     Det der fjernes er FLYTNING: alt der glider, løftes eller skaleres. */
   *, *::before, *::after {
-    transition-duration: 0.01ms !important;
+    transition-property: background-color, background, border-color, color,
+                         opacity, box-shadow, fill, stroke !important;
+    transition-duration: var(--t-fast) !important;
     animation-duration: 0.01ms !important;
   }
+  [data-testid="stSidebarNav"] a:hover,
   [class*="st-key-fagkort"]:hover,
-  [data-testid="stMetric"]:hover,
+  [class*="st-key-fagkort"]:active,
+  a[data-testid="stPageLink-NavLink"]:hover,
+  .stFormSubmitButton > button:hover,
+  .stButton > button:hover,
+  .stButton > button[kind="primary"]:hover,
+  .stNumberInput button:hover,
+  [data-baseweb="slider"] [role="slider"]:hover,
   .stTabs [data-baseweb="tab"]:hover,
-  .stButton > button:hover { transform: none !important; }
+  [data-testid="stMetric"]:hover,
+  [data-testid="stTooltipHoverTarget"]:hover svg,
+  button[kind="pills"]:hover,
+  button[kind="segmented_control"]:hover { transform: none !important; }
+}
+
+/* ---- Touch: ingen falske hover-tilstande --------------------------------
+   En finger udløser "hover" ved tryk, og effekten hænger så fast bagefter -
+   kortet bliver stående løftet indtil du rammer noget andet. Derfor slås
+   hover-flytning fra på skærme uden mus (telefon, tablet). Farverne bliver;
+   det er kun bevægelsen der ikke giver mening uden en markør.             */
+@media (hover: none), (pointer: coarse) {
+  [data-testid="stSidebarNav"] a:hover,
+  [class*="st-key-fagkort"]:hover,
+  a[data-testid="stPageLink-NavLink"]:hover,
+  .stFormSubmitButton > button:hover,
+  .stButton > button:hover,
+  .stButton > button[kind="primary"]:hover,
+  .stNumberInput button:hover,
+  [data-baseweb="slider"] [role="slider"]:hover,
+  .stTabs [data-baseweb="tab"]:hover,
+  [data-testid="stMetric"]:hover,
+  [data-testid="stTooltipHoverTarget"]:hover svg,
+  button[kind="pills"]:hover,
+  button[kind="segmented_control"]:hover { transform: none !important; }
 }
 
 /* ============================================================
@@ -922,7 +967,11 @@ button[kind="pills"], button[kind="segmented_control"] {
   background: rgba(30, 41, 59, 0.55) !important;
   color: var(--txt-muted) !important;
   border-radius: 999px !important;
-  transition: all var(--t-base) var(--ease);
+  transition: background var(--t-base) var(--ease),
+              border-color var(--t-base) var(--ease),
+              color var(--t-base) var(--ease),
+              transform var(--t-fast) var(--ease),
+              box-shadow var(--t-base) var(--ease);
 }
 button[kind="pills"]:hover, button[kind="segmented_control"]:hover {
   border-color: var(--line-accent) !important;
