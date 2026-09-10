@@ -59,3 +59,6 @@ def test_modul_renderer_uden_fejl(fag, sti, modul):
     # ene fejl er en begrænsning i harnesset, ikke i appen.
     ægte = [e for e in at.exception if "url_pathname" not in (e.value or "")]
     assert not ægte, f"«{fag} / {modul}» fejler: {[e.value for e in ægte][:1]}"
+    if fag == "Forsvarstræner":
+        assert at.pills(key=key).value == modul
+        assert len(at.subheader) > 0
